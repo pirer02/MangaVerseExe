@@ -24,6 +24,12 @@
       <artifactId>javafx-fxml</artifactId>
       <version>17.0.6</version>
     </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-web</artifactId>
+      <version>17.0.12</version>
+    </dependency>
+
 
 <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -58,7 +64,7 @@
             <!-- Default configuration for running with: mvn clean javafx:run -->
             <id>default-cli</id>
             <configuration>
-              <mainClass>com.zixion.mangaverse/com.zixion.mangaverse.HelloApplication</mainClass>
+              <mainClass>com.zixion.mangaverse/com.zixion.mangaverse.Main</mainClass>
               <launcher>app</launcher>
               <jlinkZipName>app</jlinkZipName>
               <jlinkImageName>app</jlinkImageName>
