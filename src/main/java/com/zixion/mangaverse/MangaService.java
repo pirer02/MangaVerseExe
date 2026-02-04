@@ -10,16 +10,32 @@ import org.json.JSONArray;
 
 public class MangaService {
 
-    private String BASE_URL = "http://95.61.154.61:5000/";
+    // IP del servidor dentro de la casa de Pablo
+    private String IP_LOCAL = "ipoculto/";
+    // Tu IP pública que ya tienes puesta
+    private String IP_PUBLICA = "http://95.61.154.61:5000/";
+
+    private String getBaseUrl() {
+        try {
+            // Intentamos ver si la IP local responde en 200ms
+            if (java.net.InetAddress.getByName("192.168.0.XX").isReachable(200)) {
+                return IP_LOCAL;
+            }
+        } catch (Exception e) {
+            // Si falla, asumimos que estamos fuera
+        }
+        return IP_PUBLICA;
+    }
 
     public List<Manga> obtenerMangasDesdeServidor() {
         List<Manga> lista = new ArrayList<>();
-        System.out.println("Intentando conectar con la API en: " + BASE_URL); // Log de inicio
+        String urlFinal = getBaseUrl();
+        System.out.println("Usando conexión: " + urlFinal);
 
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "mangas")) // Usando el endpoint de la API Python
+                    .uri(URI.create(urlFinal + "mangas")) // Usando el endpoint de la API Python
                     .GET().build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
