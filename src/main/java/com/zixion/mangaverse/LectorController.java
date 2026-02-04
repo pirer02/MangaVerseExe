@@ -19,39 +19,50 @@ public class LectorController {
     @FXML private ScrollPane scrollLector;
     private MainController mainController;
 
+    private volatile boolean cargando = false;
+
     public void cargarManga(File archivoCbz, String nombreCap, MainController main) {
         this.mainController = main;
         lblCapitulo.setText(nombreCap);
         contenedorPaginas.getChildren().clear();
+        cargando = true; // Activamos el interruptor
 
-        try (ZipFile zipFile = new ZipFile(archivoCbz)) {
-            // Usamos un TreeMap para que las páginas se ordenen alfabéticamente (01, 02, 03...)
-            TreeMap<String, ZipEntry> entradasOrdenadas = new TreeMap<>();
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+        new Thread(() -> {
+            try (ZipFile zipFile = new ZipFile(archivoCbz)) {
+                TreeMap<String, ZipEntry> entradasOrdenadas = new TreeMap<>();
+                Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (!entry.isDirectory() && esImagen(entry.getName())) {
-                    entradasOrdenadas.put(entry.getName(), entry);
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    if (!entry.isDirectory() && esImagen(entry.getName())) {
+                        entradasOrdenadas.put(entry.getName(), entry);
+                    }
                 }
-            }
 
-            // Creamos un ImageView por cada página
-            for (ZipEntry entry : entradasOrdenadas.values()) {
-                try (InputStream is = zipFile.getInputStream(entry)) {
-                    Image img = new Image(is);
-                    ImageView iv = new ImageView(img);
+                for (ZipEntry entry : entradasOrdenadas.values()) {
+                    // Si el interruptor se apaga, salimos del bucle inmediatamente
+                    if (!cargando) {
+                        System.out.println("Carga detenida por el usuario.");
+                        break;
+                    }
 
-                    // Ajustar la imagen al ancho del contenedor
-                    iv.setPreserveRatio(true);
-                    iv.fitWidthProperty().bind(scrollLector.widthProperty().subtract(30));
-
-                    contenedorPaginas.getChildren().add(iv);
+                    try (InputStream is = zipFile.getInputStream(entry)) {
+                        Image img = new Image(is);
+                        javafx.application.Platform.runLater(() -> {
+                            ImageView iv = new ImageView(img);
+                            iv.setPreserveRatio(true);
+                            iv.fitWidthProperty().bind(scrollLector.widthProperty().subtract(30));
+                            contenedorPaginas.getChildren().add(iv);
+                        });
+                        Thread.sleep(50);
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                cargando = false;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        }).start();
     }
 
     private boolean esImagen(String name) {
@@ -59,7 +70,12 @@ public class LectorController {
         return n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png") || n.endsWith(".webp");
     }
 
+    public void detenerCarga() {
+        this.cargando = false;
+    }
+
     @FXML private void cerrarLector() {
+        detenerCarga();
         mainController.abrirBiblioteca(); // O volver a la vista de capítulos
     }
 }

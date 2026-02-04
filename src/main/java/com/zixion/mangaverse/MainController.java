@@ -29,6 +29,8 @@ public class MainController {
     private boolean menuVisible = false;
     private final double MENU_WIDTH = 280.0; // Sincronizado con FXML
 
+    private Object currentController;
+
     private MangaService mangaService = new MangaService();
 
     public MangaService getMangaService() {
@@ -42,6 +44,12 @@ public class MainController {
     }
     public void setViewContainer(StackPane viewContainer) {
         this.viewContainer = viewContainer;
+    }
+    public Object getCurrentController() {
+        return currentController;
+    }
+    public void setCurrentController(Object currentController) {
+        this.currentController = currentController;
     }
 
     @FXML
@@ -71,6 +79,9 @@ public class MainController {
 
     @FXML
     public void abrirBiblioteca() {
+        if (currentController instanceof LectorController) {
+            ((LectorController) currentController).detenerCarga();
+        }
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("biblioteca-view.fxml"));
             Node root = loader.load();
@@ -80,8 +91,6 @@ public class MainController {
 
             // 2. Colocamos la vista en el contenedor [cite: 8]
             viewContainer.getChildren().setAll(root);
-
-            System.out.println("HOLA 1");
 
             // 3. Usamos la referencia directa del controlador
             if (biblioCtrl != null && biblioCtrl.mangaGrid != null) {

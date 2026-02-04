@@ -11,13 +11,17 @@ import java.io.IOException;
 public class Main extends Application {
 
     public static final String APP_FOLDER = System.getProperty("user.home") + File.separator + ".mangaverse";
+    public static final String CAPITULOS_FOLDER = APP_FOLDER + File.separator + "capitulos-cache";
+    public static final String LISTADO_FOLDER = APP_FOLDER + File.separator + "listado-capitulos-cache";
 
     @Override
     public void start(Stage stage) throws IOException {
-        File directory = new File(APP_FOLDER);
-        if (!directory.exists()) {
-            directory.mkdirs();
-            System.out.println("Carpeta de la aplicación creada en: " + APP_FOLDER);
+        String[] folders = {APP_FOLDER, CAPITULOS_FOLDER, LISTADO_FOLDER};
+        for (String path : folders) {
+            File dir = new File(path);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
         }
 
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("main-view.fxml"));
@@ -29,8 +33,8 @@ public class Main extends Application {
         stage.setMaximized(true);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Limpiando archivos temporales en: " + APP_FOLDER);
-            limpiarCarpetaTemporal(directory);
+            System.out.println("Limpiando archivos temporales en: " + CAPITULOS_FOLDER);
+            limpiarCarpetaTemporal(new File(CAPITULOS_FOLDER));
         }));
         stage.show();
     }
@@ -40,11 +44,13 @@ public class Main extends Application {
     }
 
     private void limpiarCarpetaTemporal(File folder) {
-        File[] files = folder.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (f.getName().endsWith(".cbz")) {
-                    f.delete();
+        if (folder.exists() && folder.isDirectory()) {
+            File[] files = folder.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.getName().endsWith(".cbz")) {
+                        f.delete();
+                    }
                 }
             }
         }

@@ -6,13 +6,17 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MangaService {
     private String IP_LOCAL = "ipoculto/";
     private String IP_PUBLICA = "http://95.61.154.61:5000/";
+
+    private final String CACHE_FILE = Main.LISTADO_FOLDER + File.separator + "cache_capitulos.json";
 
     private String getBaseUrl() {
         try {
@@ -60,6 +64,12 @@ public class MangaService {
     }
 
     public List<String> obtenerCapitulos(String mangaNombre) {
+        List<String> capsCache = leerCacheCapitulos(mangaNombre);
+        if (!capsCache.isEmpty()) {
+            System.out.println("Cargando capítulos desde caché para: " + mangaNombre);
+            return capsCache;
+        }
+        List<String> caps = new ArrayList<>();
         String urlFinal = getBaseUrl();
         try {
             HttpClient client = HttpClient.newHttpClient();
@@ -68,27 +78,27 @@ public class MangaService {
                     .GET().build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            JSONArray array = new JSONArray(response.body());
-
-            List<String> caps = new ArrayList<>();
-            for (int i = 0; i < array.length(); i++) {
-                caps.add(array.getString(i));
+            if(response.statusCode() == 200){
+                JSONArray array = new JSONArray(response.body());
+                for (int i = 0; i < array.length(); i++) {
+                    caps.add(array.getString(i));
+                }
+                guardarEnCache(mangaNombre, caps);
             }
-            return caps;
         } catch (Exception e) {
             e.printStackTrace();
             return new ArrayList<>();
         }
+        return caps;
     }
 
     public File descargarArchivo(String mangaNombre, String nombreCapitulo) throws Exception {
         String urlFinal = getBaseUrl();
         // 1. Definimos dónde debería estar el archivo
-        File destination = new File(Main.APP_FOLDER, nombreCapitulo);
+        File destination = new File(Main.CAPITULOS_FOLDER, nombreCapitulo);
 
-        // 2. COMPROBACIÓN: Si el archivo ya existe, lo devolvemos directamente
         if (destination.exists()) {
-            System.out.println("Archivo encontrado localmente. Saltando descarga: " + nombreCapitulo);
+            System.out.println("Archivo encontrado en capitulos-cache: " + nombreCapitulo);
             return destination;
         }
 
@@ -110,5 +120,36 @@ public class MangaService {
         } else {
             throw new IOException("Error en servidor: " + response.statusCode());
         }
+    }
+
+    private void guardarEnCache(String mangaNombre, List<String> capitulos) {
+        try {
+            File file = new File(CACHE_FILE);
+            JSONObject root = file.exists() ? new JSONObject(Files.readString(file.toPath())) : new JSONObject();
+
+            root.put(mangaNombre, new JSONArray(capitulos));
+            Files.writeString(file.toPath(), root.toString());
+        } catch (Exception e) {
+            System.err.println("No se pudo guardar la caché de capítulos.");
+        }
+    }
+
+    private List<String> leerCacheCapitulos(String mangaNombre) {
+        List<String> caps = new ArrayList<>();
+        try {
+            File file = new File(CACHE_FILE);
+            if (!file.exists()) return caps;
+
+            JSONObject root = new JSONObject(Files.readString(file.toPath()));
+            if (root.has(mangaNombre)) {
+                JSONArray array = root.getJSONArray(mangaNombre);
+                for (int i = 0; i < array.length(); i++) {
+                    caps.add(array.getString(i));
+                }
+            }
+        } catch (Exception e) {
+            // Error leyendo caché, devolvemos lista vacía para forzar descarga
+        }
+        return caps;
     }
 }

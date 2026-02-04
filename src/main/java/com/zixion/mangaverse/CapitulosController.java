@@ -92,6 +92,7 @@ public class CapitulosController {
             Node lectorNode = loader.load();
 
             LectorController controller = loader.getController();
+            mainController.setCurrentController(controller);
             // Pasamos el archivo descargado y configuramos el visor
             controller.cargarManga(archivoDescargado, "Leyendo capítulo...", mainController);
 
