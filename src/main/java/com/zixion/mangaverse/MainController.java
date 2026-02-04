@@ -106,8 +106,13 @@ public class MainController {
 
                 task.setOnSucceeded(e -> {
                     List<Manga> mangas = task.getValue();
-                    for (Manga m : mangas) {
-                        agregarMangaAGrid(m);
+                    if (mangaGrid != null) {
+                        // 1. Limpieza total garantizada antes de empezar
+                        mangaGrid.getChildren().clear();
+
+                        for (Manga m : mangas) {
+                            agregarMangaAGrid(m);
+                        }
                     }
                 });
 
@@ -123,49 +128,58 @@ public class MainController {
 
     private void agregarMangaAGrid(Manga manga) {
         try {
-            // 1. Cargamos el archivo FXML de la tarjeta
+            // 1. Cargamos una nueva instancia del FXML para esta tarjeta
             FXMLLoader loader = new FXMLLoader(getClass().getResource("manga-card.fxml"));
-
-            // El controlador del FXML (VBox) se convierte en nuestro nodo raíz
             VBox card = loader.load();
 
-            // 2. Buscamos los elementos dentro del FXML por su fx:id
-            // (Asegúrate de que en manga-card.fxml tengan estos IDs)
+            // 2. Localizamos los elementos visuales
             ImageView iv = (ImageView) card.lookup("#portadaImageView");
             Label lbl = (Label) card.lookup("#tituloLabel");
 
-            // 3. Asignamos los datos del objeto Manga [cite: 2]
-            if (iv != null) {
-                iv.setImage(manga.getPortada());
-            }
+            // 3. Asignamos el texto inmediatamente
             if (lbl != null) {
                 lbl.setText(manga.getTitulo());
             }
 
-            // 4. Configuramos el evento de clic
+            // 4. AÑADIMOS LA TARJETA AL GRID (Solo una vez aquí)
+            // Esto permite que la interfaz sea instantánea
+            mangaGrid.getChildren().add(card);
+
+            // 5. Iniciamos la carga de la imagen en segundo plano
+            if (iv != null && manga.getUrlPortada() != null) {
+                // Usamos el constructor de 6 parámetros para activar backgroundLoading (true)
+                Image imagen = new Image(manga.getUrlPortada(), 180, 250, true, true, true);
+
+                imagen.errorProperty().addListener((obs, old, hasError) -> {
+                    if (hasError) {
+                        System.err.println("Error en: " + manga.getUrlPortada());
+                        // Aquí podrías cargar una imagen local genérica si la descarga falla
+                    }
+                });
+
+                iv.setImage(imagen);
+            }
+
+            // 6. Configuramos el evento de clic
             card.setOnMouseClicked(event -> {
                 try {
-                    // 1. Preguntar a la API por los capítulos
-                    List<String> caps = mangaService.obtenerCapitulos(manga.getTitulo().replace(" ", "_"));
+                    // Reemplazamos espacios por guiones bajos para la API
+                    String mangaId = manga.getTitulo().replace(" ", "_");
+                    List<String> caps = mangaService.obtenerCapitulos(mangaId);
 
-                    // 2. Cargar la nueva vista
                     FXMLLoader capLoader = new FXMLLoader(getClass().getResource("capitulos-view.fxml"));
                     Node node = capLoader.load();
 
-                    // 3. Pasar los datos al nuevo controlador
                     CapitulosController controller = capLoader.getController();
                     controller.setDatos(manga.getTitulo(), caps, this);
 
-                    // 4. Cambiar la vista en el StackPane [cite: 8]
                     viewContainer.getChildren().setAll(node);
-
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             });
 
-            // 5. Añadimos la tarjeta al grid de la biblioteca
-            mangaGrid.getChildren().add(card);
+            // IMPORTANTE: Se eliminó la duplicidad de mangaGrid.getChildren().add(card) que estaba aquí.
 
         } catch (IOException e) {
             System.err.println("No se pudo cargar manga-card.fxml: " + e.getMessage());

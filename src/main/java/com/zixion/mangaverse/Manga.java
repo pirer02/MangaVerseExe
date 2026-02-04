@@ -10,6 +10,7 @@ public class Manga {
     private String titulo;
     private File archivo;
     private Image portada;
+    private String urlPortada;
 
     public Manga(String titulo, File archivo, Image portada) {
         this.titulo = titulo;
@@ -35,5 +36,10 @@ public class Manga {
     public void setPortada(Image portada) {
         this.portada = portada;
     }
-
+    public String getUrlPortada() {
+        return urlPortada;
+    }
+    public void setUrlPortada(String urlPortada) {
+        this.urlPortada = urlPortada;
+    }
 }

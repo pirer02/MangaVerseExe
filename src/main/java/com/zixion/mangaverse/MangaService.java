@@ -21,7 +21,7 @@ public class MangaService {
     private String getBaseUrl() {
         try {
             // Intentamos ver si la IP local responde en 200ms
-            if (java.net.InetAddress.getByName("192.168.1.31").isReachable(200)) {
+            if (java.net.InetAddress.getByName("192.168.0.31").isReachable(200)) {
                 return IP_LOCAL;
             }
         } catch (Exception e) {
@@ -46,13 +46,21 @@ public class MangaService {
             System.out.println("Código de respuesta del servidor: " + response.statusCode());
 
             if (response.statusCode() == 200) {
-                System.out.println("Cuerpo recibido: " + response.body());
                 JSONArray jsonArray = new JSONArray(response.body());
                 for (int i = 0; i < jsonArray.length(); i++) {
-                    String nombre = jsonArray.getString(i);
-                    lista.add(new Manga(nombre, null, null));
+                    String nombreCarpeta = jsonArray.getString(i); // Ej: "Air_gear"
+
+                    // 1. Limpiamos el nombre para la interfaz
+                    String nombreVisual = nombreCarpeta.replace("_", " ").replace("-", " ");
+
+                    // 2. Creamos la URL hacia el nuevo endpoint de Flask
+                    String urlPortada = getBaseUrl() + "mangas/" + nombreCarpeta + "/portada";
+
+                    // 3. Creamos el objeto
+                    Manga manga = new Manga(nombreVisual, null, null);
+                    manga.setUrlPortada(urlPortada);
+                    lista.add(manga);
                 }
-                System.out.println("Mangas procesados: " + lista.size());
             } else {
                 System.err.println("Error: El servidor respondió con algo distinto a 200 OK");
             }
