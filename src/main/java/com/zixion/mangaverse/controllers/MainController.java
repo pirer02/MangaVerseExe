@@ -1,5 +1,6 @@
 package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.Utils;
 import com.zixion.mangaverse.models.Manga;
 import com.zixion.mangaverse.services.MangaService;
 import javafx.animation.TranslateTransition;
@@ -8,7 +9,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextField; // Importación necesaria
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class MainController {
+
     @FXML private VBox drawerMenu;
     @FXML private StackPane viewContainer;
     @FXML private TextField searchBar; // Referencia al buscador
@@ -82,7 +84,7 @@ public class MainController {
             ((LectorController) currentController).detenerCarga();
         }
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("biblioteca-view.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "biblioteca-view.fxml"));
             Node root = loader.load();
 
             // 1. Obtenemos el controlador de la biblioteca
@@ -128,7 +130,7 @@ public class MainController {
     private void agregarMangaAGrid(Manga manga) {
         try {
             // 1. Cargamos una nueva instancia del FXML para esta tarjeta
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("manga-card.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "manga-card.fxml"));
             VBox card = loader.load();
 
             // 2. Localizamos los elementos visuales
@@ -166,7 +168,7 @@ public class MainController {
                     String mangaId = manga.getTitulo().replace(" ", "_");
                     List<String> caps = mangaService.obtenerCapitulos(mangaId);
 
-                    FXMLLoader capLoader = new FXMLLoader(getClass().getResource("capitulos-view.fxml"));
+                    FXMLLoader capLoader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "capitulos-view.fxml"));
                     Node node = capLoader.load();
 
                     CapitulosController controller = capLoader.getController();

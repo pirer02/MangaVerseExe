@@ -1,5 +1,6 @@
 package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.Utils;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -85,7 +86,7 @@ public class CapitulosController {
 
     private void abrirElLector(File archivoDescargado) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("lector-view.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
             Node lectorNode = loader.load();
 
             LectorController controller = loader.getController();
