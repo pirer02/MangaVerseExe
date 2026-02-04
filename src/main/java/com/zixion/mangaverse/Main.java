@@ -3,10 +3,12 @@ package com.zixion.mangaverse;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 public class Main extends Application {
 
@@ -27,6 +29,7 @@ public class Main extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
 
+        stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/com/zixion/mangaverse/icons/MV.png"))));
         stage.setTitle("MangaVerse");
         stage.setScene(scene);
 
