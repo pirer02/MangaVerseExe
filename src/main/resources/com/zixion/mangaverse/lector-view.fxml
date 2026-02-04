@@ -6,7 +6,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.LectorController"
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.LectorController"
       alignment="TOP_CENTER" style="-fx-background-color: #1a1a1a;">
     <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #000000;">
         <Button text="← Volver a capítulos" onAction="#cerrarLector"

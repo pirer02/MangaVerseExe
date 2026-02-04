@@ -1,10 +1,8 @@
-package com.zixion.mangaverse;
+package com.zixion.mangaverse.models;
 
 import javafx.scene.image.Image;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.zip.ZipFile;
 
 public class Manga {
     private String titulo;

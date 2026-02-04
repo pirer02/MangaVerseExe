@@ -1,4 +1,4 @@
-package com.zixion.mangaverse;
+package com.zixion.mangaverse.controllers;
 
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -9,9 +9,6 @@ import javafx.scene.control.ListView;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.List;
 

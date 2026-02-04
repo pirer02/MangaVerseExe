@@ -6,7 +6,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.CapitulosController"
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.CapitulosController"
       spacing="20" style="-fx-padding: 30; -fx-background-color: transparent;">
     <HBox spacing="15" alignment="CENTER_LEFT">
         <Button text="← Volver" onAction="#volverABiblioteca"

@@ -1,4 +1,4 @@
-package com.zixion.mangaverse;
+package com.zixion.mangaverse.services;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +9,9 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.zixion.mangaverse.Main;
+import com.zixion.mangaverse.models.Manga;
 import org.json.JSONArray;
 import org.json.JSONObject;
 

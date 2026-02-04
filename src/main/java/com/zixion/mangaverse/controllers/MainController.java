@@ -1,5 +1,7 @@
-package com.zixion.mangaverse;
+package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.models.Manga;
+import com.zixion.mangaverse.services.MangaService;
 import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -14,11 +16,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
-import java.util.zip.ZipFile;
 
 public class MainController {
     @FXML private VBox drawerMenu;

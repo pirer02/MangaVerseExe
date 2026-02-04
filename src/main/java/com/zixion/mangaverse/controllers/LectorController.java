@@ -1,4 +1,4 @@
-package com.zixion.mangaverse;
+package com.zixion.mangaverse.controllers;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
