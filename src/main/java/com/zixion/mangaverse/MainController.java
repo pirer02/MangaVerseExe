@@ -31,6 +31,19 @@ public class MainController {
 
     private MangaService mangaService = new MangaService();
 
+    public MangaService getMangaService() {
+        return mangaService;
+    }
+    public void setMangaService(MangaService mangaService) {
+        this.mangaService = mangaService;
+    }
+    public StackPane getViewContainer() {
+        return viewContainer;
+    }
+    public void setViewContainer(StackPane viewContainer) {
+        this.viewContainer = viewContainer;
+    }
+
     @FXML
     public void initialize() {
         abrirBiblioteca();
@@ -57,7 +70,7 @@ public class MainController {
     }
 
     @FXML
-    private void abrirBiblioteca() {
+    public void abrirBiblioteca() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("biblioteca-view.fxml"));
             Node root = loader.load();
@@ -73,8 +86,6 @@ public class MainController {
             // 3. Usamos la referencia directa del controlador
             if (biblioCtrl != null && biblioCtrl.mangaGrid != null) {
                 this.mangaGrid = biblioCtrl.mangaGrid; // Guardamos la referencia en el MainController
-
-                System.out.println("HOLA 2 - ¡Grid encontrado mediante Controller!");
                 mangaGrid.getChildren().clear();
 
                 Task<List<Manga>> task = new Task<>() {
@@ -124,8 +135,24 @@ public class MainController {
 
             // 4. Configuramos el evento de clic
             card.setOnMouseClicked(event -> {
-                System.out.println("Abriendo manga: " + manga.getTitulo());
-                // Aquí irá la lógica para abrir el lector
+                try {
+                    // 1. Preguntar a la API por los capítulos
+                    List<String> caps = mangaService.obtenerCapitulos(manga.getTitulo().replace(" ", "_"));
+
+                    // 2. Cargar la nueva vista
+                    FXMLLoader capLoader = new FXMLLoader(getClass().getResource("capitulos-view.fxml"));
+                    Node node = capLoader.load();
+
+                    // 3. Pasar los datos al nuevo controlador
+                    CapitulosController controller = capLoader.getController();
+                    controller.setDatos(manga.getTitulo(), caps, this);
+
+                    // 4. Cambiar la vista en el StackPane [cite: 8]
+                    viewContainer.getChildren().setAll(node);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             });
 
             // 5. Añadimos la tarjeta al grid de la biblioteca
@@ -133,20 +160,6 @@ public class MainController {
 
         } catch (IOException e) {
             System.err.println("No se pudo cargar manga-card.fxml: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void mostrarLector(Manga manga) {
-        System.out.println("Abriendo lector para: " + manga.getTitulo());
-        // Aquí cargarías una nueva vista (ej. lector-view.fxml) que lea el archivo .zip o .cbz
-        // loadView("lector-view.fxml");
-    }
-    private void loadView(String fxml) {
-        try {
-            Node node = FXMLLoader.load(Objects.requireNonNull(getClass().getResource(fxml)));
-            viewContainer.getChildren().setAll(node);
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }

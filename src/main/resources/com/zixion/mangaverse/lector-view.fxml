@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.LectorController"
+      alignment="TOP_CENTER" style="-fx-background-color: #1a1a1a;">
+    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #000000;">
+        <Button text="← Volver a capítulos" onAction="#cerrarLector"
+                style="-fx-background-color: #600000; -fx-text-fill: white; -fx-cursor: hand;"/>
+        <Label fx:id="lblCapitulo" style="-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <ScrollPane fx:id="scrollLector" fitToWidth="true" VBox.vgrow="ALWAYS"
+                style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a; -fx-border-color: transparent;">
+        <VBox fx:id="contenedorPaginas" alignment="TOP_CENTER" spacing="5" style="-fx-padding: 0 0 20 0;" />
+    </ScrollPane>
+</VBox>

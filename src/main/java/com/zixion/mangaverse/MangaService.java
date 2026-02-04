@@ -1,5 +1,7 @@
 package com.zixion.mangaverse;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -9,16 +11,13 @@ import java.util.List;
 import org.json.JSONArray;
 
 public class MangaService {
-
-    // IP del servidor dentro de la casa de Pablo
     private String IP_LOCAL = "ipoculto/";
-    // Tu IP pública que ya tienes puesta
     private String IP_PUBLICA = "http://95.61.154.61:5000/";
 
     private String getBaseUrl() {
         try {
             // Intentamos ver si la IP local responde en 200ms
-            if (java.net.InetAddress.getByName("192.168.0.XX").isReachable(200)) {
+            if (java.net.InetAddress.getByName("192.168.1.31").isReachable(200)) {
                 return IP_LOCAL;
             }
         } catch (Exception e) {
@@ -58,5 +57,58 @@ public class MangaService {
             e.printStackTrace();
         }
         return lista;
+    }
+
+    public List<String> obtenerCapitulos(String mangaNombre) {
+        String urlFinal = getBaseUrl();
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(urlFinal + "mangas/" + mangaNombre + "/capitulos"))
+                    .GET().build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            JSONArray array = new JSONArray(response.body());
+
+            List<String> caps = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                caps.add(array.getString(i));
+            }
+            return caps;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    public File descargarArchivo(String mangaNombre, String nombreCapitulo) throws Exception {
+        String urlFinal = getBaseUrl();
+        // 1. Definimos dónde debería estar el archivo
+        File destination = new File(Main.APP_FOLDER, nombreCapitulo);
+
+        // 2. COMPROBACIÓN: Si el archivo ya existe, lo devolvemos directamente
+        if (destination.exists()) {
+            System.out.println("Archivo encontrado localmente. Saltando descarga: " + nombreCapitulo);
+            return destination;
+        }
+
+        // 3. Si no existe, procedemos con la descarga normal
+        String urlDescarga = urlFinal + "download/" + mangaNombre + "/" + nombreCapitulo;
+        System.out.println("Descargando desde: " + urlDescarga);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(urlDescarga.replace(" ", "%20")))
+                .GET()
+                .build();
+
+        HttpResponse<java.nio.file.Path> response = client.send(request,
+                HttpResponse.BodyHandlers.ofFile(destination.toPath()));
+
+        if (response.statusCode() == 200) {
+            return destination;
+        } else {
+            throw new IOException("Error en servidor: " + response.statusCode());
+        }
     }
 }
