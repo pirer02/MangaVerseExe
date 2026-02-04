@@ -21,7 +21,7 @@ public class MangaService {
     private String getBaseUrl() {
         try {
             // Intentamos ver si la IP local responde en 200ms
-            if (java.net.InetAddress.getByName("192.168.1.31").isReachable(200)) {
+            if (java.net.InetAddress.getByName("192.168.0.31").isReachable(200)) {
                 return IP_LOCAL;
             }
         } catch (Exception e) {
