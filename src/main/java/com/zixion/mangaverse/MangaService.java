@@ -18,14 +18,26 @@ public class MangaService {
 
     private final String CACHE_FILE = Main.LISTADO_FOLDER + File.separator + "cache_capitulos.json";
 
-    private String getBaseUrl() {
+    private boolean isServerAlive(String url) {
         try {
-            // Intentamos ver si la IP local responde en 200ms
-            if (java.net.InetAddress.getByName("192.168.0.31").isReachable(200)) {
-                return IP_LOCAL;
-            }
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(java.time.Duration.ofMillis(300)) // Timeout rápido
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url + "mangas")) // Probamos el endpoint principal
+                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<Void> response = client.send(request, HttpResponse.BodyHandlers.discarding());
+            return response.statusCode() == 200;
         } catch (Exception e) {
-            // Si falla, asumimos que estamos fuera
+            return false;
+        }
+    }
+
+    private String getBaseUrl() {
+        // Intentamos local, si no, pública
+        if (isServerAlive(IP_LOCAL)) {
+            return IP_LOCAL;
         }
         return IP_PUBLICA;
     }
