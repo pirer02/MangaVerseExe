@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" alignment="CENTER" spacing="10"
+      style="-fx-background-color: rgba(255,255,255,0.1); -fx-padding: 10; -fx-background-radius: 10; -fx-cursor: hand;">
+    <ImageView fx:id="portadaImageView" fitHeight="250" fitWidth="180" preserveRatio="true" />
+    <Label fx:id="tituloLabel" style="-fx-text-fill: white; -fx-font-weight: bold;" />
+</VBox>
