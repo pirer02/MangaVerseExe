@@ -7,209 +7,203 @@ import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
+import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainController {
 
     @FXML private VBox drawerMenu;
     @FXML private StackPane viewContainer;
-    @FXML private TextField searchBar; // Referencia al buscador
+    @FXML private TextField searchBar;
 
-    private FlowPane mangaGrid;
     private boolean menuVisible = false;
-    private final double MENU_WIDTH = 280.0; // Sincronizado con FXML
+    private final double MENU_WIDTH = 280.0;
+    private final MangaService mangaService = new MangaService();
 
-    private Object currentController;
-
-    private MangaService mangaService = new MangaService();
-
+    // Esta lista contendrá los objetos Manga con sus datos públicos rellenos
     private List<Manga> listaMaestra = new ArrayList<>();
 
-    public MangaService getMangaService() {
-        return mangaService;
-    }
-    public void setMangaService(MangaService mangaService) {
-        this.mangaService = mangaService;
-    }
-    public StackPane getViewContainer() {
-        return viewContainer;
-    }
-    public void setViewContainer(StackPane viewContainer) {
-        this.viewContainer = viewContainer;
-    }
-    public Object getCurrentController() {
-        return currentController;
-    }
-    public void setCurrentController(Object currentController) {
-        this.currentController = currentController;
-    }
+    private final List<String> GENEROS_POOL = Arrays.asList(
+            "Shonen", "Accion", "Aventura", "Comedia", "Drama", "Seinen", "Romance", "Isekai", "Deporte", "Chanbara"
+    );
 
     @FXML
     public void initialize() {
-        abrirBiblioteca();
+        // Iniciamos la carga de datos
+        cargarDatosYMostrarExplorar();
 
+        // Barra de búsqueda: si hay texto busca, si no, vuelve a Netflix
         if (searchBar != null) {
-            searchBar.textProperty().addListener((observable, oldValue, newValue) -> {
-                filtrarMangas(newValue);
+            searchBar.textProperty().addListener((obs, old, newText) -> {
+                if (newText == null || newText.trim().isEmpty()) {
+                    abrirExplorar();
+                } else {
+                    ejecutarBusqueda(newText.trim().toLowerCase());
+                }
             });
         }
     }
 
-    private void filtrarMangas(String texto) {
-        if (mangaGrid == null) return;
+    private void cargarDatosYMostrarExplorar() {
+        Task<List<Manga>> task = new Task<>() {
+            @Override
+            protected List<Manga> call() throws Exception {
+                // 1. Obtenemos la lista inicial del servidor
+                List<Manga> mangasServidor = mangaService.obtenerMangasDesdeServidor();
 
-        mangaGrid.getChildren().clear(); // Limpiamos todo
-
-        if (texto == null || texto.isEmpty()) {
-            // Si no hay texto, mostramos todos
-            for (Manga m : listaMaestra) {
-                agregarMangaAGrid(m);
-            }
-        } else {
-            // Mostramos solo los que coinciden
-            for (Manga m : listaMaestra) {
-                if (m.getTitulo().toLowerCase().contains(texto.toLowerCase())) {
-                    agregarMangaAGrid(m);
+                // 2. Para cada manga, obtenemos la info extra y rellenamos las variables PÚBLICAS
+                for (Manga m : mangasServidor) {
+                    Manga info = mangaService.obtenerInfoManga(m.getTitulo().replace(" ", "_"));
+                    // Acceso directo a variables públicas de tu clase Manga
+                    m.generos = info.generos;
+                    m.sinopsis = info.sinopsis;
+                    m.estado = info.estado;
+                    m.tipo = info.tipo;
                 }
+                return mangasServidor;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            this.listaMaestra = task.getValue();
+            abrirExplorar();
+        });
+        new Thread(task).start();
+    }
+
+    @FXML
+    public void abrirExplorar() {
+        if (menuVisible) toggleMenu();
+
+        VBox mainLayout = new VBox(35);
+        mainLayout.setPadding(new Insets(20, 0, 40, 0));
+        mainLayout.setStyle("-fx-background-color: #141414;");
+
+        ScrollPane scrollVertical = new ScrollPane(mainLayout);
+        scrollVertical.setFitToWidth(true);
+        scrollVertical.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollVertical.setStyle("-fx-background: #141414; -fx-background-color: #141414; -fx-border-color: transparent;");
+
+        List<String> generosCopia = new ArrayList<>(GENEROS_POOL);
+        Collections.shuffle(generosCopia);
+
+        for (String gen : generosCopia.subList(0, Math.min(6, generosCopia.size()))) {
+            // Filtrado usando la variable pública .generos
+            List<Manga> filtrados = listaMaestra.stream()
+                    .filter(m -> m.generos != null &&
+                            m.generos.stream().anyMatch(g -> g.equalsIgnoreCase(gen)))
+                    .collect(Collectors.toList());
+
+            if (!filtrados.isEmpty()) {
+                mainLayout.getChildren().add(crearFilaHorizontal(gen, filtrados));
             }
         }
+        viewContainer.getChildren().setAll(scrollVertical);
+    }
+
+    private void ejecutarBusqueda(String query) {
+        FlowPane grid = new FlowPane();
+        grid.setHgap(20); grid.setVgap(25);
+        grid.setPadding(new Insets(30));
+        grid.setStyle("-fx-background-color: #141414;");
+
+        ScrollPane scroll = new ScrollPane(grid);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414; -fx-border-color: transparent;");
+
+        for (Manga m : listaMaestra) {
+            if (m.getTitulo().toLowerCase().contains(query)) {
+                grid.getChildren().add(crearTarjetaManga(m));
+            }
+        }
+        viewContainer.getChildren().setAll(scroll);
+    }
+
+    private VBox crearFilaHorizontal(String titulo, List<Manga> mangas) {
+        VBox row = new VBox(10);
+        Label lbl = new Label(titulo.toUpperCase());
+        lbl.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 0 0 0 25;");
+
+        HBox hb = new HBox(20);
+        hb.setPadding(new Insets(10, 25, 10, 25));
+        for (Manga m : mangas) {
+            hb.getChildren().add(crearTarjetaManga(m));
+        }
+
+        ScrollPane sp = new ScrollPane(hb);
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sp.setPannable(true);
+        sp.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;");
+
+        row.getChildren().addAll(lbl, sp);
+        return row;
+    }
+
+    private VBox crearTarjetaManga(Manga m) {
+        VBox card = new VBox(8);
+        card.setAlignment(Pos.TOP_CENTER);
+        card.setCursor(Cursor.HAND);
+
+        ImageView iv = new ImageView();
+        iv.setFitWidth(160); iv.setFitHeight(230);
+
+        if (m.getUrlPortada() != null) {
+            iv.setImage(new Image(m.getUrlPortada(), 160, 230, true, true, true));
+        }
+
+        Rectangle clip = new Rectangle(160, 230);
+        clip.setArcWidth(15); clip.setArcHeight(15);
+        iv.setClip(clip);
+
+        card.setOnMouseEntered(e -> card.setScaleX(1.05));
+        card.setOnMouseExited(e -> card.setScaleX(1.0));
+
+        Label lbl = new Label(m.getTitulo());
+        lbl.setStyle("-fx-text-fill: #bdc3c7; -fx-font-size: 13px; -fx-font-weight: bold;");
+        lbl.setMaxWidth(150); lbl.setAlignment(Pos.CENTER);
+
+        card.getChildren().addAll(iv, lbl);
+        card.setOnMouseClicked(e -> {
+            try {
+                List<String> caps = mangaService.obtenerCapitulos(m.getTitulo());
+                FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "capitulos-view.fxml"));
+                Node node = loader.load();
+                CapitulosController controller = loader.getController();
+                controller.setDatos(m.getTitulo(), caps, this, m);
+                viewContainer.getChildren().setAll(node);
+            } catch (IOException ex) { ex.printStackTrace(); }
+        });
+
+        return card;
     }
 
     @FXML
     private void toggleMenu() {
         TranslateTransition transition = new TranslateTransition(Duration.millis(300), drawerMenu);
-        if (menuVisible) {
-            transition.setToX(-MENU_WIDTH);
-            menuVisible = false;
-        } else {
-            transition.setToX(0);
-            menuVisible = true;
-        }
+        transition.setToX(menuVisible ? -MENU_WIDTH : 0);
+        menuVisible = !menuVisible;
         transition.play();
     }
 
-    @FXML
-    public void abrirBiblioteca() {
-        if (currentController instanceof LectorController) {
-            ((LectorController) currentController).detenerCarga();
-        }
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "biblioteca-view.fxml"));
-            Node root = loader.load();
-
-            // 1. Obtenemos el controlador de la biblioteca
-            BibliotecaController biblioCtrl = loader.getController();
-
-            // 2. Colocamos la vista en el contenedor [cite: 8]
-            viewContainer.getChildren().setAll(root);
-
-            // 3. Usamos la referencia directa del controlador
-            if (biblioCtrl != null && biblioCtrl.mangaGrid != null) {
-                this.mangaGrid = biblioCtrl.mangaGrid; // Guardamos la referencia en el MainController
-                mangaGrid.getChildren().clear();
-
-                Task<List<Manga>> task = new Task<>() {
-                    @Override
-                    protected List<Manga> call() throws Exception {
-                        return mangaService.obtenerMangasDesdeServidor();
-                    }
-                };
-
-                task.setOnSucceeded(e -> {
-                    List<Manga> mangas = task.getValue();
-                    this.listaMaestra = task.getValue();
-                    if (mangaGrid != null) {
-                        // 1. Limpieza total garantizada antes de empezar
-                        mangaGrid.getChildren().clear();
-
-                        for (Manga m : mangas) {
-                            agregarMangaAGrid(m);
-                        }
-                    }
-                });
-
-                new Thread(task).start();
-            } else {
-                System.err.println("ERROR: No se pudo vincular el BibliotecaController.");
-            }
-        } catch (IOException e) {
-            System.err.println("Error cargando biblioteca-view.fxml");
-            e.printStackTrace();
-        }
-    }
-
-    private void agregarMangaAGrid(Manga manga) {
-        try {
-            // 1. Cargamos una nueva instancia del FXML para esta tarjeta
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "manga-card.fxml"));
-            VBox card = loader.load();
-
-            // 2. Localizamos los elementos visuales
-            ImageView iv = (ImageView) card.lookup("#portadaImageView");
-            Label lbl = (Label) card.lookup("#tituloLabel");
-
-            // 3. Asignamos el texto inmediatamente
-            if (lbl != null) {
-                lbl.setText(manga.getTitulo());
-            }
-
-            // 4. AÑADIMOS LA TARJETA AL GRID (Solo una vez aquí)
-            // Esto permite que la interfaz sea instantánea
-            mangaGrid.getChildren().add(card);
-
-            // 5. Iniciamos la carga de la imagen en segundo plano
-            if (iv != null && manga.getUrlPortada() != null) {
-                // Usamos el constructor de 6 parámetros para activar backgroundLoading (true)
-                Image imagen = new Image(manga.getUrlPortada(), 180, 250, true, true, true);
-
-                imagen.errorProperty().addListener((obs, old, hasError) -> {
-                    if (hasError) {
-                        System.err.println("Error en: " + manga.getUrlPortada());
-                        // Aquí podrías cargar una imagen local genérica si la descarga falla
-                    }
-                });
-
-                iv.setImage(imagen);
-            }
-
-            // 6. Configuramos el evento de clic
-            card.setOnMouseClicked(event -> {
-                try {
-                    // Reemplazamos espacios por guiones bajos para la API
-                    String mangaId = manga.getTitulo().replace(" ", "_");
-                    List<String> caps = mangaService.obtenerCapitulos(mangaId);
-
-                    FXMLLoader capLoader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "capitulos-view.fxml"));
-                    Node node = capLoader.load();
-
-                    CapitulosController controller = capLoader.getController();
-                    controller.setDatos(manga.getTitulo(), caps, this, manga);
-
-                    viewContainer.getChildren().setAll(node);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            // IMPORTANTE: Se eliminó la duplicidad de mangaGrid.getChildren().add(card) que estaba aquí.
-
-        } catch (IOException e) {
-            System.err.println("No se pudo cargar manga-card.fxml: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    @FXML private void abrirExplorar() { if (menuVisible) toggleMenu(); }
+    @FXML public void abrirBiblioteca() { abrirExplorar(); }
+    public MangaService getMangaService() { return mangaService; }
+    public StackPane getViewContainer() { return viewContainer; }
+    public void setCurrentController(Object controller) { }
 }

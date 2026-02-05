@@ -27,3 +27,20 @@
     -fx-border-color: #e50914;
     -fx-border-width: 0 0 0 4; /* Línea roja a la izquierda */
 }
+
+
+
+/* CSS del mainController */
+.scroll-pane {
+    -fx-background-color: transparent;
+}
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+.scroll-bar .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-background-radius: 10;
+}
