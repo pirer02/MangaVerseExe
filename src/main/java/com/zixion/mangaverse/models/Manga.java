@@ -3,6 +3,7 @@ package com.zixion.mangaverse.models;
 import javafx.scene.image.Image;
 
 import java.io.File;
+import java.util.List;
 
 public class Manga {
     private String titulo;
@@ -10,10 +11,19 @@ public class Manga {
     private Image portada;
     private String urlPortada;
 
-    public Manga(String titulo, File archivo, Image portada) {
+    public String sinopsis;
+    public List<String> generos;
+    public String estado;
+    public String tipo;
+
+    public Manga(String titulo, File archivo, Image portada, String sinopsis, List<String> generos, String estado, String tipo) {
         this.titulo = titulo;
         this.archivo = archivo;
         this.portada = portada;
+        this.sinopsis = sinopsis;
+        this.generos = generos;
+        this.estado = estado;
+        this.tipo = tipo;
     }
 
     public String getTitulo() {

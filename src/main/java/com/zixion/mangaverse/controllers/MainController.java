@@ -18,6 +18,7 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainController {
@@ -33,6 +34,8 @@ public class MainController {
     private Object currentController;
 
     private MangaService mangaService = new MangaService();
+
+    private List<Manga> listaMaestra = new ArrayList<>();
 
     public MangaService getMangaService() {
         return mangaService;
@@ -57,11 +60,30 @@ public class MainController {
     public void initialize() {
         abrirBiblioteca();
 
-        // Ejemplo opcional: Detectar cuando el usuario escribe en el buscador
         if (searchBar != null) {
             searchBar.textProperty().addListener((observable, oldValue, newValue) -> {
-                System.out.println("Buscando: " + newValue);
+                filtrarMangas(newValue);
             });
+        }
+    }
+
+    private void filtrarMangas(String texto) {
+        if (mangaGrid == null) return;
+
+        mangaGrid.getChildren().clear(); // Limpiamos todo
+
+        if (texto == null || texto.isEmpty()) {
+            // Si no hay texto, mostramos todos
+            for (Manga m : listaMaestra) {
+                agregarMangaAGrid(m);
+            }
+        } else {
+            // Mostramos solo los que coinciden
+            for (Manga m : listaMaestra) {
+                if (m.getTitulo().toLowerCase().contains(texto.toLowerCase())) {
+                    agregarMangaAGrid(m);
+                }
+            }
         }
     }
 
@@ -107,6 +129,7 @@ public class MainController {
 
                 task.setOnSucceeded(e -> {
                     List<Manga> mangas = task.getValue();
+                    this.listaMaestra = task.getValue();
                     if (mangaGrid != null) {
                         // 1. Limpieza total garantizada antes de empezar
                         mangaGrid.getChildren().clear();
@@ -172,7 +195,7 @@ public class MainController {
                     Node node = capLoader.load();
 
                     CapitulosController controller = capLoader.getController();
-                    controller.setDatos(manga.getTitulo(), caps, this);
+                    controller.setDatos(manga.getTitulo(), caps, this, manga);
 
                     viewContainer.getChildren().setAll(node);
                 } catch (IOException e) {

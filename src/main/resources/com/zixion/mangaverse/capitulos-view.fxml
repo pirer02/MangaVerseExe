@@ -6,14 +6,79 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.CapitulosController"
-      spacing="20" style="-fx-padding: 30; -fx-background-color: transparent;">
-    <HBox spacing="15" alignment="CENTER_LEFT">
-        <Button text="← Volver" onAction="#volverABiblioteca"
-                style="-fx-background-color: #600000; -fx-text-fill: white; -fx-cursor: hand;"/>
-        <Label fx:id="mangaTituloLabel" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: white;"/>
-    </HBox>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.effect.BoxBlur?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.TextFlow?>
+<?import javafx.scene.text.Text?>
 
-    <ListView fx:id="listaCapitulos" VBox.vgrow="ALWAYS"
-              style="-fx-background-color: rgba(255,255,255,0.05); -fx-control-inner-background: #2c3e50; -fx-text-fill: white;"/>
-</VBox>
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zixion.mangaverse.controllers.CapitulosController">
+
+    <ImageView fx:id="bgImage" fitHeight="800.0" fitWidth="1200.0" preserveRatio="false">
+        <effect>
+            <BoxBlur height="50.0" iterations="3" width="50.0" />
+        </effect>
+    </ImageView>
+    <AnchorPane style="-fx-background-color: rgba(0,0,0,0.7);" />
+
+    <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;">
+        <content>
+            <VBox spacing="20.0">
+                <padding>
+                    <Insets bottom="30.0" left="40.0" right="40.0" top="40.0" />
+                </padding>
+
+                <Button onAction="#volverABiblioteca" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-radius: 5;" text="← Volver a Biblioteca">
+                    <font>
+                        <Font name="System Bold" size="14.0" />
+                    </font></Button>
+
+                <HBox spacing="30.0">
+                    <ImageView fx:id="portadaImg" fitHeight="350.0" fitWidth="240.0" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);" />
+
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <Label fx:id="lblTitulo" style="-fx-text-fill: white;" text="Título del Manga" wrapText="true">
+                            <font>
+                                <Font name="System Bold" size="48.0" />
+                            </font>
+                        </Label>
+
+                        <HBox spacing="15.0">
+                            <Label fx:id="lblEstado" style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;" text="ESTADO" />
+                            <Label fx:id="lblTipo" style="-fx-border-color: white; -fx-text-fill: white; -fx-padding: 4 10; -fx-border-radius: 4;" text="TIPO" />
+                        </HBox>
+
+                        <FlowPane fx:id="contenedorGeneros" hgap="10.0" vgap="10.0" />
+
+                        <Label style="-fx-text-fill: #cccccc;" text="Sinopsis">
+                            <font>
+                                <Font name="System Bold" size="18.0" />
+                            </font>
+                            <VBox.margin>
+                                <Insets top="10.0" />
+                            </VBox.margin>
+                        </Label>
+                        <TextFlow>
+                            <Text fx:id="txtSinopsis" fill="#dddddd" style="-fx-font-size: 16px;" text="Aquí va la descripción..." />
+                        </TextFlow>
+                    </VBox>
+                </HBox>
+
+                <HBox style="-fx-border-color: transparent transparent #555 transparent; -fx-border-width: 2;">
+                    <Label style="-fx-text-fill: white;" text="Capítulos">
+                        <font>
+                            <Font name="System Bold" size="24.0" />
+                        </font>
+                        <padding>
+                            <Insets bottom="10.0" />
+                        </padding>
+                    </Label>
+                </HBox>
+
+                <ListView fx:id="listaCapitulos" style="-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 10;" VBox.vgrow="ALWAYS" />
+
+            </VBox>
+        </content>
+    </ScrollPane>
+</StackPane>

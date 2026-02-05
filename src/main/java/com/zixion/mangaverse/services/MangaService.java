@@ -72,7 +72,7 @@ public class MangaService {
                     String urlPortada = getBaseUrl() + "mangas/" + nombreCarpeta + "/portada";
 
                     // 3. Creamos el objeto
-                    Manga manga = new Manga(nombreVisual, null, null);
+                    Manga manga = new Manga(nombreVisual, null, null, null, null, null, null);
                     manga.setUrlPortada(urlPortada);
                     lista.add(manga);
                 }
@@ -174,5 +174,39 @@ public class MangaService {
             // Error leyendo caché, devolvemos lista vacía para forzar descarga
         }
         return caps;
+    }
+
+    public Manga obtenerInfoManga(String mangaNombre) {
+        String urlFinal = getBaseUrl() + "mangas/" + mangaNombre + "/info";
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(urlFinal.replace(" ", "%20"))) // Importante por los espacios
+                    .GET().build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                JSONObject json = new JSONObject(response.body());
+
+                String titulo = json.optString("titulo", "Sin título");
+                String sinopsis = json.optString("descripcion", "No hay descripción disponible.");
+                String estado = json.optString("estado", "Desconocido");
+                String tipo = json.optString("tipo", "Manga");
+
+                List<String> generos = new ArrayList<>();
+                JSONArray arr = json.optJSONArray("generos");
+                if (arr != null) {
+                    for (int i = 0; i < arr.length(); i++) {
+                        generos.add(arr.getString(i));
+                    }
+                }
+                return new Manga(titulo, null, null, sinopsis, generos, estado, tipo);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // Retorno vacío si falla para que no rompa la UI
+        return new Manga(mangaNombre, null, null, "Descripción no disponible", new ArrayList<>(), "", "");
     }
 }
