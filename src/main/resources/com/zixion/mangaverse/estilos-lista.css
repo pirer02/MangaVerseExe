@@ -1,0 +1,29 @@
+/* Quitar el color azul de selección por defecto de JavaFX */
+.list-cell {
+    -fx-background-color: transparent;
+}
+.list-cell:selected {
+    -fx-background-color: transparent;
+}
+
+/* Estado normal de nuestra fila personalizada */
+.fila-capitulo {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 8;
+    /* Transición suave para el movimiento y color */
+    -fx-transition: all 0.3s ease-in-out;
+}
+
+/* EFECTO HOVER: Cuando el ratón entra en la celda */
+.list-cell:filled:hover .fila-capitulo {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+    -fx-translate-x: 10; /* Se mueve 10px a la derecha */
+    -fx-effect: dropshadow(three-pass-box, rgba(229, 9, 20, 0.4), 10, 0, 0, 0);
+}
+
+/* Opcional: Cuando está seleccionado que brille un poco más */
+.list-cell:filled:selected .fila-capitulo {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-border-color: #e50914;
+    -fx-border-width: 0 0 0 4; /* Línea roja a la izquierda */
+}

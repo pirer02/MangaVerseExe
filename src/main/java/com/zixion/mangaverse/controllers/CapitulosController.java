@@ -5,13 +5,19 @@ import com.zixion.mangaverse.models.Manga;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.text.Text;
 
 import java.io.File;
@@ -33,6 +39,7 @@ public class CapitulosController {
     @FXML private FlowPane contenedorGeneros; // Contenedor para las etiquetas
     @FXML private TextField txtBusqueda;
     private List<String> todosLosCapitulos = new ArrayList<>(); // Para guardar el respaldo
+    @FXML private Label lblTotalCapitulos;
     // -----------------------------------
 
     public void setDatos(String titulo, List<String> capitulos, MainController main, Manga manga) {
@@ -47,6 +54,7 @@ public class CapitulosController {
 
         // 2. Cargar inicialmente todos los capítulos
         listaCapitulos.getItems().setAll(todosLosCapitulos);
+        lblTotalCapitulos.setText(String.valueOf(todosLosCapitulos.size()));
 
         // 3. LOGICA DE BÚSQUEDA (FILTRO)
         txtBusqueda.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -65,6 +73,46 @@ public class CapitulosController {
                 String itemSeleccionado = listaCapitulos.getSelectionModel().getSelectedItem();
                 if (itemSeleccionado != null) {
                     descargarYAbrir(itemSeleccionado + ".cbz");
+                }
+            }
+        });
+        configurarDisenoLista();
+    }
+
+    private void configurarDisenoLista() {
+        listaCapitulos.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    HBox contenedor = new HBox(15);
+                    contenedor.setAlignment(Pos.CENTER_LEFT);
+                    contenedor.setPadding(new Insets(10, 15, 10, 15));
+
+                    // ASIGNAR CLAVE PARA EL CSS
+                    contenedor.getStyleClass().add("fila-capitulo");
+
+                    Label icono = new Label("▶");
+                    icono.setStyle("-fx-text-fill: #e50914; -fx-font-size: 16px;");
+
+                    Label nombre = new Label(item);
+                    nombre.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    Label btnLeer = new Label("LEER");
+                    btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
+
+                    contenedor.getChildren().addAll(icono, nombre, spacer, btnLeer);
+                    setGraphic(contenedor);
+
+                    // Importante: Celda transparente para que se vea el fondo del HBox
+                    setStyle("-fx-background-color: transparent; -fx-padding: 5 0; -fx-cursor: hand;");
                 }
             }
         });
