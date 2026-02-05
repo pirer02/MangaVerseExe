@@ -76,6 +76,13 @@
                     </Label>
                 </HBox>
 
+                <TextField fx:id="txtBusqueda" promptText="Buscar capítulo..."
+                           style="-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-prompt-text-fill: #888; -fx-background-radius: 5; -fx-padding: 8;">
+                    <VBox.margin>
+                        <Insets bottom="5.0" top="5.0" />
+                    </VBox.margin>
+                </TextField>
+
                 <ListView fx:id="listaCapitulos" style="-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 10;" VBox.vgrow="ALWAYS" />
 
             </VBox>

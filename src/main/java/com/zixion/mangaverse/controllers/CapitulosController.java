@@ -8,6 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
@@ -30,46 +31,63 @@ public class CapitulosController {
     @FXML private Label lblTipo;
     @FXML private Text txtSinopsis;       // Usamos Text para que se ajuste al ancho
     @FXML private FlowPane contenedorGeneros; // Contenedor para las etiquetas
+    @FXML private TextField txtBusqueda;
+    private List<String> todosLosCapitulos = new ArrayList<>(); // Para guardar el respaldo
     // -----------------------------------
 
     public void setDatos(String titulo, List<String> capitulos, MainController main, Manga manga) {
         this.mainController = main;
         lblTitulo.setText(titulo);
 
-        // Creamos una lista nueva con los nombres limpios
-        List<String> nombresLimpios = new ArrayList<>();
+        // 1. Limpiar nombres y guardar en la lista maestra
+        todosLosCapitulos.clear();
         for (String cap : capitulos) {
-            String nombreSinExtension = cap.replace(".cbz", "");
-            nombresLimpios.add(nombreSinExtension);
+            todosLosCapitulos.add(cap.replace(".cbz", ""));
         }
 
-        listaCapitulos.getItems().setAll(nombresLimpios);
+        // 2. Cargar inicialmente todos los capítulos
+        listaCapitulos.getItems().setAll(todosLosCapitulos);
 
+        // 3. LOGICA DE BÚSQUEDA (FILTRO)
+        txtBusqueda.textProperty().addListener((observable, oldValue, newValue) -> {
+            filtrarCapitulos(newValue);
+        });
+
+        // Cargar imágenes y demás info
         Image imagen = new Image(manga.getUrlPortada(), true);
         portadaImg.setImage(imagen);
         bgImage.setImage(imagen);
         cargarInfoExtra();
 
-        // Al hacer doble clic
+        // Evento de doble clic (se mantiene igual)
         listaCapitulos.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 String itemSeleccionado = listaCapitulos.getSelectionModel().getSelectedItem();
-
-                // ¡OJO! Para descargar, necesitamos el nombre REAL del archivo (con .cbz)
-                // Lo recuperamos volviendo a poner la extensión
-                String nombreArchivoReal = itemSeleccionado + ".cbz";
-
-                System.out.println("Solicitando descarga de: " + nombreArchivoReal);
-                descargarYAbrir(nombreArchivoReal);
+                if (itemSeleccionado != null) {
+                    descargarYAbrir(itemSeleccionado + ".cbz");
+                }
             }
         });
+    }
+
+    // Método auxiliar para el filtrado
+    private void filtrarCapitulos(String texto) {
+        if (texto == null || texto.isEmpty()) {
+            listaCapitulos.getItems().setAll(todosLosCapitulos);
+        } else {
+            String lowerCaseFilter = texto.toLowerCase();
+            List<String> filtrados = todosLosCapitulos.stream()
+                    .filter(cap -> cap.toLowerCase().contains(lowerCaseFilter))
+                    .toList();
+            listaCapitulos.getItems().setAll(filtrados);
+        }
     }
 
     private void cargarInfoExtra() {
         Task<Manga> task = new Task<>() {
             @Override
             protected Manga call() throws Exception {
-                // Llama al método nuevo que creamos en MangaService
+                // Reemplazamos espacios por guiones bajos para que coincida con la búsqueda en la API/BD
                 String mangaId = lblTitulo.getText().replace(" ", "_");
                 return mainController.getMangaService().obtenerInfoManga(mangaId);
             }
@@ -78,34 +96,44 @@ public class CapitulosController {
         task.setOnSucceeded(e -> {
             Manga info = task.getValue();
 
-            // Actualizar interfaz
-            lblEstado.setText(info.estado != null ? info.estado.toUpperCase() : "DESCONOCIDO");
-            lblTipo.setText(info.tipo != null && !info.tipo.isEmpty() ? info.tipo.toUpperCase() : "MANGA");
-            txtSinopsis.setText(info.sinopsis);
+            if (info != null) {
+                // 1. Asignar textos básicos
+                lblTipo.setText(info.tipo != null && !info.tipo.isEmpty() ? info.tipo.toUpperCase() : "MANGA");
+                txtSinopsis.setText(info.sinopsis != null ? info.sinopsis : "Sin sinopsis disponible.");
 
-            // Estilo dinámico para el estado
-            if ("Finalizado".equalsIgnoreCase(info.estado) || "Terminado".equalsIgnoreCase(info.estado)) {
-                lblEstado.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
-            } else {
-                lblEstado.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
-            }
+                // 2. Lógica de Colores y Estado
+                String estadoNormalizado = info.estado != null ? info.estado.toLowerCase() : "";
 
-            // Crear etiquetas (tags) para los géneros
-            contenedorGeneros.getChildren().clear();
-            if (info.generos != null) {
-                for (String genero : info.generos) {
-                    Label tag = new Label(genero);
-                    tag.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 15; -fx-font-size: 12px;");
-                    contenedorGeneros.getChildren().add(tag);
+                if (estadoNormalizado.contains("terminado") || estadoNormalizado.contains("finalizado")) {
+                    lblEstado.setText("TERMINADO");
+                    // ROJO
+                    lblEstado.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
+                } else {
+                    lblEstado.setText("EN CURSO");
+                    // VERDE
+                    lblEstado.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
+                }
+
+                // 3. Crear etiquetas para los géneros
+                contenedorGeneros.getChildren().clear();
+                if (info.generos != null) {
+                    for (String genero : info.generos) {
+                        Label tag = new Label(genero);
+                        tag.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 15; -fx-font-size: 12px;");
+                        contenedorGeneros.getChildren().add(tag);
+                    }
                 }
             }
         });
 
         task.setOnFailed(e -> {
             System.err.println("No se pudo cargar la info extra del manga.");
-            txtSinopsis.setText("Descripción no disponible.");
+            txtSinopsis.setText("Error al cargar la descripción desde el servidor.");
+            lblEstado.setText("ERROR");
+            lblEstado.setStyle("-fx-background-color: #555555; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;");
         });
 
+        // Ejecutar en un hilo separado para no congelar la UI
         new Thread(task).start();
     }
 
