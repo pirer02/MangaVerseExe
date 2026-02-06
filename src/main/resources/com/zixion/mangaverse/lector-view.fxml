@@ -1,21 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 
 <VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.LectorController"
       alignment="TOP_CENTER" style="-fx-background-color: #1a1a1a;">
-    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #000000;">
-        <Button text="← Volver a capítulos" onAction="#cerrarLector"
-                style="-fx-background-color: #600000; -fx-text-fill: white; -fx-cursor: hand;"/>
-        <Label fx:id="lblCapitulo" style="-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;"/>
+
+    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 10; -fx-background-color: #000000;">
+        <children>
+            <Button text="← Volver" onAction="#cerrarLector"
+                    style="-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;"/>
+
+            <Region HBox.hgrow="ALWAYS" />
+
+            <HBox spacing="10" alignment="CENTER">
+                <Button fx:id="btnAnterior" text="ANTERIOR" onAction="#capituloAnterior"
+                        style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+
+                <Label fx:id="lblCapitulo" text="Cargando..."
+                       style="-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold; -fx-min-width: 200; -fx-alignment: CENTER;"/>
+
+                <Button fx:id="btnSiguiente" text="SIGUIENTE" onAction="#capituloSiguiente"
+                        style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <Region HBox.hgrow="ALWAYS" />
+        </children>
     </HBox>
 
     <ScrollPane fx:id="scrollLector" fitToWidth="true" VBox.vgrow="ALWAYS"
                 style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a; -fx-border-color: transparent;">
-        <VBox fx:id="contenedorPaginas" alignment="TOP_CENTER" spacing="5" style="-fx-padding: 0 0 20 0;" />
+        <content>
+            <VBox fx:id="contenedorPaginas" alignment="TOP_CENTER" spacing="8" style="-fx-padding: 0 0 20 0;">
+            </VBox>
+        </content>
     </ScrollPane>
 </VBox>
