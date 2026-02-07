@@ -55,9 +55,13 @@
 
             <Separator opacity="0.3" />
 
-            <Button text="Biblioteca" onAction="#abrirBiblioteca"
+            <Button text="Inicio" onAction="#abrirInicio"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
+
             <Button text="Explorar" onAction="#abrirExplorar"
+                    style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
+
+            <Button text="Biblioteca" onAction="#abrirBiblioteca"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
         </children>
     </VBox>
