@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CapitulosController {
-    @FXML private StackPane contenedorPrincipal; // Asegúrate de que el StackPane raíz en el FXML tenga fx:id="contenedorPrincipal"
+    @FXML private StackPane contenedorPrincipal;
     @FXML private Label lblTitulo;
     @FXML private ListView<String> listaCapitulos;
     @FXML private ImageView bgImage;
@@ -45,19 +45,12 @@ public class CapitulosController {
 
     @FXML
     public void initialize() {
-        // SOLUCIÓN AL PROBLEMA DE PANTALLA:
-
-        // 1. Managed=false: Hace que el layout ignore el tamaño real de la imagen
-        // para cálculos, evitando que "empuje" otros elementos.
+        // Fondo Responsive
         bgImage.setManaged(false);
-
-        // 2. Binding: La imagen se estira manualmente al tamaño del panel.
         bgImage.fitWidthProperty().bind(contenedorPrincipal.widthProperty());
         bgImage.fitHeightProperty().bind(contenedorPrincipal.heightProperty());
 
-        // 3. CLIPPING (CRÍTICO): Creamos una máscara de recorte.
-        // Esto obliga a que cualquier pixel de la imagen que se salga del
-        // tamaño del panel sea invisible y no interfiera con otros elementos.
+        // Clipping para que no se salga de la ventana
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(contenedorPrincipal.widthProperty());
         clip.heightProperty().bind(contenedorPrincipal.heightProperty());
@@ -90,7 +83,7 @@ public class CapitulosController {
             if (event.getClickCount() == 2) {
                 String itemSeleccionado = listaCapitulos.getSelectionModel().getSelectedItem();
                 if (itemSeleccionado != null) {
-                    abrirElLector(itemSeleccionado + ".cbz");
+                    abrirElLector(itemSeleccionado);
                 }
             }
         });
@@ -109,7 +102,17 @@ public class CapitulosController {
                     .map(s -> s + ".cbz")
                     .toList();
 
-            int indice = listaArchivosCbz.indexOf(nombreCapituloSeleccionado);
+            String nombreArchivoSeleccionado = nombreCapituloSeleccionado + ".cbz";
+            int indice = listaArchivosCbz.indexOf(nombreArchivoSeleccionado);
+
+            // Registro de progreso
+            String siguienteCapitulo = null;
+            if (indice + 1 < listaArchivosCbz.size()) {
+                siguienteCapitulo = listaArchivosCbz.get(indice + 1).replace(".cbz", "");
+            }
+            mainController.registrarLectura(mangaActual.getTitulo(), nombreCapituloSeleccionado, siguienteCapitulo);
+
+            listaCapitulos.refresh(); // Actualiza visualmente el "LEÍDO"
 
             controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController);
             mainController.getViewContainer().getChildren().setAll(lectorNode);
@@ -118,6 +121,7 @@ public class CapitulosController {
         }
     }
 
+    // CORRECCIÓN: El método que busca el FXML es volverAlInicio
     @FXML private void volverAlInicio() {
         mainController.abrirInicio();
     }
@@ -142,33 +146,29 @@ public class CapitulosController {
                 return mainController.getMangaService().obtenerInfoManga(mangaId);
             }
         };
-
         task.setOnSucceeded(e -> {
             Manga info = task.getValue();
             if (info != null) {
-                lblTipo.setText(info.tipo != null && !info.tipo.isEmpty() ? info.tipo.toUpperCase() : "MANGA");
-                txtSinopsis.setText(info.sinopsis != null ? info.sinopsis : "Sin sinopsis disponible.");
-                String estadoNormalizado = info.estado != null ? info.estado.toLowerCase() : "";
-
-                if (estadoNormalizado.contains("terminado") || estadoNormalizado.contains("finalizado")) {
+                lblTipo.setText(info.tipo != null ? info.tipo.toUpperCase() : "MANGA");
+                txtSinopsis.setText(info.sinopsis);
+                String est = info.estado != null ? info.estado.toLowerCase() : "";
+                if (est.contains("terminado") || est.contains("finalizado")) {
                     lblEstado.setText("TERMINADO");
                     lblEstado.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
                 } else {
                     lblEstado.setText("EN CURSO");
                     lblEstado.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4; -fx-font-weight: bold;");
                 }
-
                 contenedorGeneros.getChildren().clear();
                 if (info.generos != null) {
-                    for (String genero : info.generos) {
-                        Label tag = new Label(genero);
-                        tag.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 15; -fx-font-size: 12px;");
-                        contenedorGeneros.getChildren().add(tag);
+                    for (String g : info.generos) {
+                        Label t = new Label(g);
+                        t.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 15; -fx-font-size: 12px;");
+                        contenedorGeneros.getChildren().add(t);
                     }
                 }
             }
         });
-
         new Thread(task).start();
     }
 
@@ -196,8 +196,14 @@ public class CapitulosController {
                     Region spacer = new Region();
                     HBox.setHgrow(spacer, Priority.ALWAYS);
 
-                    Label btnLeer = new Label("LEER");
-                    btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
+                    boolean leido = mainController.isCapituloLeido(mangaActual.getTitulo(), item);
+
+                    Label btnLeer = new Label(leido ? "LEÍDO" : "LEER");
+                    if (leido) {
+                        btnLeer.setStyle("-fx-text-fill: #2ecc71; -fx-font-size: 10px; -fx-border-color: #2ecc71; -fx-border-radius: 3; -fx-padding: 2 8; -fx-font-weight: bold;");
+                    } else {
+                        btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
+                    }
 
                     contenedor.getChildren().addAll(icono, nombre, spacer, btnLeer);
                     setGraphic(contenedor);

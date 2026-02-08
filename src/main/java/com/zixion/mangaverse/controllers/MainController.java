@@ -24,11 +24,14 @@ import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import org.json.JSONArray;
+import org.json.JSONObject; // Necesario para el nuevo formato
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MainController {
@@ -41,8 +44,19 @@ public class MainController {
     private final double MENU_WIDTH = 280.0;
     private final MangaService mangaService = new MangaService();
     private final File ARCHIVO_BIBLIOTECA = new File(Main.APP_FOLDER, "biblioteca.json");
+
     private List<Manga> listaMaestra = new ArrayList<>();
-    private Set<String> bibliotecaUsuario = new HashSet<>();
+
+    // --- NUEVA ESTRUCTURA DE DATOS ---
+    // Clase interna para gestionar los datos de cada manga
+    public static class DatosUsuarioManga {
+        public boolean enBiblioteca = false;
+        public Set<String> capitulosLeidos = new HashSet<>();
+        public String siguienteCapitulo = null; // El nombre del archivo del siguiente capítulo
+    }
+
+    // Mapa principal: Título del Manga -> Datos del Usuario
+    private Map<String, DatosUsuarioManga> datosUsuario = new HashMap<>();
 
     private final List<String> GENEROS_POOL = Arrays.asList(
             "Shonen", "Accion", "Aventura", "Comedia", "Drama", "Seinen", "Romance", "Isekai", "Deporte", "Chanbara"
@@ -64,14 +78,42 @@ public class MainController {
         }
     }
 
+    // --- NUEVA LÓGICA DE PERSISTENCIA (MIGRACIÓN INCLUIDA) ---
+
     private void cargarBiblioteca() {
         if (ARCHIVO_BIBLIOTECA.exists()) {
             try {
                 String contenido = Files.readString(ARCHIVO_BIBLIOTECA.toPath());
-                JSONArray jsonArray = new JSONArray(contenido);
-                bibliotecaUsuario.clear();
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    bibliotecaUsuario.add(jsonArray.getString(i));
+                datosUsuario.clear();
+
+                // Detectamos si es el formato antiguo (JSONArray) o el nuevo (JSONObject)
+                if (contenido.trim().startsWith("[")) {
+                    // MIGRACIÓN: Formato antiguo (solo lista de favoritos)
+                    JSONArray jsonArray = new JSONArray(contenido);
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        String titulo = jsonArray.getString(i);
+                        DatosUsuarioManga datos = new DatosUsuarioManga();
+                        datos.enBiblioteca = true;
+                        datosUsuario.put(titulo, datos);
+                    }
+                } else {
+                    // Formato nuevo
+                    JSONObject json = new JSONObject(contenido);
+                    for (String titulo : json.keySet()) {
+                        JSONObject dataJson = json.getJSONObject(titulo);
+                        DatosUsuarioManga datos = new DatosUsuarioManga();
+                        datos.enBiblioteca = dataJson.optBoolean("enBiblioteca", false);
+                        datos.siguienteCapitulo = dataJson.optString("siguienteCapitulo", null);
+                        if (datos.siguienteCapitulo.isEmpty()) datos.siguienteCapitulo = null;
+
+                        JSONArray leidosArr = dataJson.optJSONArray("capitulosLeidos");
+                        if (leidosArr != null) {
+                            for (int i = 0; i < leidosArr.length(); i++) {
+                                datos.capitulosLeidos.add(leidosArr.getString(i));
+                            }
+                        }
+                        datosUsuario.put(titulo, datos);
+                    }
                 }
             } catch (Exception e) { e.printStackTrace(); }
         }
@@ -79,10 +121,40 @@ public class MainController {
 
     private void guardarBiblioteca() {
         try {
-            JSONArray jsonArray = new JSONArray(bibliotecaUsuario);
-            Files.writeString(ARCHIVO_BIBLIOTECA.toPath(), jsonArray.toString());
+            JSONObject jsonPrincipal = new JSONObject();
+            for (Map.Entry<String, DatosUsuarioManga> entry : datosUsuario.entrySet()) {
+                // Solo guardamos si está en biblioteca o si ha leído algo
+                if (entry.getValue().enBiblioteca || !entry.getValue().capitulosLeidos.isEmpty()) {
+                    JSONObject dataJson = new JSONObject();
+                    dataJson.put("enBiblioteca", entry.getValue().enBiblioteca);
+                    dataJson.put("siguienteCapitulo", entry.getValue().siguienteCapitulo);
+                    dataJson.put("capitulosLeidos", new JSONArray(entry.getValue().capitulosLeidos));
+                    jsonPrincipal.put(entry.getKey(), dataJson);
+                }
+            }
+            Files.writeString(ARCHIVO_BIBLIOTECA.toPath(), jsonPrincipal.toString());
         } catch (IOException e) { e.printStackTrace(); }
     }
+
+    // --- MÉTODOS PÚBLICOS PARA GESTIÓN DE PROGRESO ---
+
+    public boolean isCapituloLeido(String mangaTitulo, String capitulo) {
+        DatosUsuarioManga datos = datosUsuario.get(mangaTitulo);
+        return datos != null && datos.capitulosLeidos.contains(capitulo);
+    }
+
+    public void registrarLectura(String mangaTitulo, String capituloLeido, String proximoCapitulo) {
+        DatosUsuarioManga datos = datosUsuario.computeIfAbsent(mangaTitulo, k -> new DatosUsuarioManga());
+        datos.capitulosLeidos.add(capituloLeido);
+        datos.siguienteCapitulo = proximoCapitulo; // Puede ser null si terminó
+        guardarBiblioteca();
+    }
+
+    public DatosUsuarioManga getDatosManga(String titulo) {
+        return datosUsuario.get(titulo);
+    }
+
+    // --- LÓGICA DE NAVEGACIÓN Y VISTAS ---
 
     private void cargarDatosYMostrarInicio() {
         Task<List<Manga>> task = new Task<>() {
@@ -91,18 +163,12 @@ public class MainController {
                 List<Manga> mangasServidor = mangaService.obtenerMangasDesdeServidor();
                 for (Manga m : mangasServidor) {
                     Manga info = mangaService.obtenerInfoManga(m.getTitulo().replace(" ", "_"));
-                    m.generos = info.generos;
-                    m.sinopsis = info.sinopsis;
-                    m.estado = info.estado;
-                    m.tipo = info.tipo;
+                    m.generos = info.generos; m.sinopsis = info.sinopsis; m.estado = info.estado; m.tipo = info.tipo;
                 }
                 return mangasServidor;
             }
         };
-        task.setOnSucceeded(e -> {
-            this.listaMaestra = task.getValue();
-            abrirInicio();
-        });
+        task.setOnSucceeded(e -> { this.listaMaestra = task.getValue(); abrirInicio(); });
         new Thread(task).start();
     }
 
@@ -117,9 +183,20 @@ public class MainController {
         scrollVertical.setFitToWidth(true);
         scrollVertical.setStyle("-fx-background: #141414; -fx-background-color: #141414; -fx-border-color: transparent;");
 
+        // Sección: Continuar Leyendo (Opcional, pero útil con la nueva lógica)
+        List<Manga> continuar = listaMaestra.stream()
+                .filter(m -> {
+                    DatosUsuarioManga d = datosUsuario.get(m.getTitulo());
+                    return d != null && d.siguienteCapitulo != null;
+                })
+                .collect(Collectors.toList());
+
+        if (!continuar.isEmpty()) {
+            mainLayout.getChildren().add(crearFilaHorizontal("Continuar Leyendo", continuar));
+        }
+
         List<String> generosCopia = new ArrayList<>(GENEROS_POOL);
         Collections.shuffle(generosCopia);
-
         for (String gen : generosCopia.subList(0, Math.min(6, generosCopia.size()))) {
             List<Manga> filtrados = listaMaestra.stream()
                     .filter(m -> m.generos != null && m.generos.stream().anyMatch(g -> g.equalsIgnoreCase(gen)))
@@ -146,7 +223,10 @@ public class MainController {
         layoutBiblioteca.getChildren().add(titulo);
 
         List<Manga> misMangas = listaMaestra.stream()
-                .filter(m -> bibliotecaUsuario.contains(m.getTitulo()))
+                .filter(m -> {
+                    DatosUsuarioManga d = datosUsuario.get(m.getTitulo());
+                    return d != null && d.enBiblioteca;
+                })
                 .collect(Collectors.toList());
 
         if (misMangas.isEmpty()) {
@@ -164,7 +244,6 @@ public class MainController {
         viewContainer.getChildren().setAll(finalScroll);
     }
 
-    // CAMBIO: Ahora es PUBLIC para que LectorController pueda invocarlo
     public void irACapitulos(Manga m) {
         try {
             List<String> caps = mangaService.obtenerCapitulos(m.getTitulo(), m);
@@ -176,21 +255,131 @@ public class MainController {
         } catch (IOException ex) { ex.printStackTrace(); }
     }
 
-    private void ejecutarBusqueda(String query) {
-        FlowPane grid = new FlowPane();
-        grid.setHgap(20); grid.setVgap(25);
-        grid.setPadding(new Insets(30));
-        grid.setStyle("-fx-background-color: #141414;");
-
-        for (Manga m : listaMaestra) {
-            if (m.getTitulo().toLowerCase().contains(query)) {
-                grid.getChildren().add(crearTarjetaManga(m));
+    // Método especial para abrir el lector DIRECTAMENTE desde la tarjeta
+    private void abrirCapituloDirecto(Manga m, String nombreCapitulo) {
+        // Necesitamos cargar la lista completa para inicializar el LectorController correctamente
+        Task<List<String>> task = new Task<>() {
+            @Override
+            protected List<String> call() throws Exception {
+                return mangaService.obtenerCapitulos(m.getTitulo(), m);
             }
+        };
+
+        task.setOnSucceeded(e -> {
+            try {
+                List<String> capitulos = task.getValue();
+                // Aseguramos que los nombres coincidan (añadiendo .cbz si falta)
+                String capBuscado = nombreCapitulo.endsWith(".cbz") ? nombreCapitulo : nombreCapitulo + ".cbz";
+                // Normalizamos lista a .cbz
+                List<String> listaNormalizada = capitulos.stream()
+                        .map(c -> c.endsWith(".cbz") ? c : c + ".cbz")
+                        .collect(Collectors.toList());
+
+                int index = listaNormalizada.indexOf(capBuscado);
+
+                if (index != -1) {
+                    FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
+                    Node lectorNode = loader.load();
+                    LectorController controller = loader.getController();
+                    setCurrentController(controller);
+                    controller.inicializarLector(listaNormalizada, index, m, this);
+                    viewContainer.getChildren().setAll(lectorNode);
+                } else {
+                    // Si no lo encuentra (ej: caché vieja), vamos a la lista normal
+                    irACapitulos(m);
+                }
+            } catch (Exception ex) { ex.printStackTrace(); }
+        });
+        new Thread(task).start();
+    }
+
+    // --- CREACIÓN DE TARJETAS (UI) ---
+
+    private VBox crearTarjetaManga(Manga m) {
+        VBox card = new VBox(8);
+        card.setAlignment(Pos.TOP_CENTER);
+        StackPane imageContainer = new StackPane();
+        imageContainer.setPrefSize(160, 230);
+
+        ImageView iv = new ImageView();
+        iv.setFitWidth(160); iv.setFitHeight(230);
+        if (m.getUrlPortada() != null) iv.setImage(new Image(m.getUrlPortada(), 160, 230, true, true, true));
+        Rectangle clip = new Rectangle(160, 230);
+        clip.setArcWidth(15); clip.setArcHeight(15);
+        iv.setClip(clip);
+        iv.setCursor(Cursor.HAND);
+        iv.setOnMouseClicked(e -> irACapitulos(m));
+
+        // Botón Biblioteca (Derecha)
+        Button btnAdd = new Button();
+        DatosUsuarioManga datos = datosUsuario.get(m.getTitulo());
+        boolean enBiblio = datos != null && datos.enBiblioteca;
+        configurarEstiloBotonBiblio(btnAdd, enBiblio);
+        StackPane.setAlignment(btnAdd, Pos.TOP_RIGHT);
+        StackPane.setMargin(btnAdd, new Insets(5));
+        btnAdd.setOnAction(e -> { toggleBiblioteca(m, btnAdd); e.consume(); });
+
+        imageContainer.getChildren().addAll(iv, btnAdd);
+
+        // --- NUEVO: Botón de "Continuar / Siguiente Capítulo" (Izquierda) ---
+        if (datos != null && datos.siguienteCapitulo != null) {
+            String capNum = extraerNumeroCapitulo(datos.siguienteCapitulo);
+            Label lblNext = new Label(capNum);
+            lblNext.setStyle("-fx-background-color: rgba(50, 50, 50, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: #777; -fx-border-radius: 4; -fx-border-width: 1;");
+
+            // Efecto Hover
+            lblNext.setOnMouseEntered(e -> lblNext.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: #e50914; -fx-border-radius: 4; -fx-border-width: 1;"));
+            lblNext.setOnMouseExited(e -> lblNext.setStyle("-fx-background-color: rgba(50, 50, 50, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: #777; -fx-border-radius: 4; -fx-border-width: 1;"));
+
+            lblNext.setOnMouseClicked(e -> {
+                abrirCapituloDirecto(m, datos.siguienteCapitulo);
+                e.consume(); // Evita que se abra la ficha general
+            });
+
+            StackPane.setAlignment(lblNext, Pos.TOP_LEFT);
+            StackPane.setMargin(lblNext, new Insets(6));
+            imageContainer.getChildren().add(lblNext);
         }
-        ScrollPane scroll = new ScrollPane(grid);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
-        viewContainer.getChildren().setAll(scroll);
+
+        Label lbl = new Label(m.getTitulo());
+        lbl.setStyle("-fx-text-fill: #bdc3c7; -fx-font-size: 13px; -fx-font-weight: bold;");
+        lbl.setMaxWidth(150); lbl.setAlignment(Pos.CENTER);
+        lbl.setCursor(Cursor.HAND);
+        lbl.setOnMouseClicked(e -> irACapitulos(m));
+
+        card.getChildren().addAll(imageContainer, lbl);
+        card.setOnMouseEntered(e -> card.setScaleX(1.05));
+        card.setOnMouseExited(e -> card.setScaleX(1.0));
+        return card;
+    }
+
+    private String extraerNumeroCapitulo(String nombreArchivo) {
+        // Intenta sacar el número del nombre (ej: "DanDaDan - 014" -> "14")
+        try {
+            Matcher m = Pattern.compile("(\\d+)").matcher(nombreArchivo);
+            if (m.find()) {
+                return "Cap. " + Integer.parseInt(m.group(1));
+            }
+        } catch (Exception e) {}
+        return "Leer"; // Fallback si no encuentra número
+    }
+
+    private void configurarEstiloBotonBiblio(Button btn, boolean added) {
+        if (added) {
+            btn.setText("✔");
+            btn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
+        } else {
+            btn.setText("+");
+            btn.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
+        }
+    }
+
+    private void toggleBiblioteca(Manga m, Button btn) {
+        DatosUsuarioManga datos = datosUsuario.computeIfAbsent(m.getTitulo(), k -> new DatosUsuarioManga());
+        datos.enBiblioteca = !datos.enBiblioteca;
+        configurarEstiloBotonBiblio(btn, datos.enBiblioteca);
+        mostrarNotificacion(datos.enBiblioteca ? "¡Añadido a tu biblioteca!" : "Eliminado de biblioteca");
+        guardarBiblioteca();
     }
 
     private VBox crearFilaHorizontal(String titulo, List<Manga> mangas) {
@@ -207,54 +396,20 @@ public class MainController {
         return row;
     }
 
-    private VBox crearTarjetaManga(Manga m) {
-        VBox card = new VBox(8);
-        card.setAlignment(Pos.TOP_CENTER);
-        StackPane imageContainer = new StackPane();
-        imageContainer.setPrefSize(160, 230);
-        ImageView iv = new ImageView();
-        iv.setFitWidth(160); iv.setFitHeight(230);
-        if (m.getUrlPortada() != null) iv.setImage(new Image(m.getUrlPortada(), 160, 230, true, true, true));
-        Rectangle clip = new Rectangle(160, 230);
-        clip.setArcWidth(15); clip.setArcHeight(15);
-        iv.setClip(clip);
-        iv.setCursor(Cursor.HAND);
-        iv.setOnMouseClicked(e -> irACapitulos(m));
-
-        Button btnAdd = new Button();
-        configurarEstiloBotonBiblio(btnAdd, bibliotecaUsuario.contains(m.getTitulo()));
-        StackPane.setAlignment(btnAdd, Pos.TOP_RIGHT);
-        StackPane.setMargin(btnAdd, new Insets(5));
-        btnAdd.setOnAction(e -> { toggleBiblioteca(m, btnAdd); e.consume(); });
-
-        imageContainer.getChildren().addAll(iv, btnAdd);
-        Label lbl = new Label(m.getTitulo());
-        lbl.setStyle("-fx-text-fill: #bdc3c7; -fx-font-size: 13px; -fx-font-weight: bold;");
-        lbl.setCursor(Cursor.HAND);
-        lbl.setOnMouseClicked(e -> irACapitulos(m));
-        card.getChildren().addAll(imageContainer, lbl);
-        return card;
-    }
-
-    private void configurarEstiloBotonBiblio(Button btn, boolean added) {
-        if (added) {
-            btn.setText("✔");
-            btn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
-        } else {
-            btn.setText("+");
-            btn.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
+    private void ejecutarBusqueda(String query) {
+        FlowPane grid = new FlowPane();
+        grid.setHgap(20); grid.setVgap(25);
+        grid.setPadding(new Insets(30));
+        grid.setStyle("-fx-background-color: #141414;");
+        for (Manga m : listaMaestra) {
+            if (m.getTitulo().toLowerCase().contains(query)) {
+                grid.getChildren().add(crearTarjetaManga(m));
+            }
         }
-    }
-
-    private void toggleBiblioteca(Manga m, Button btn) {
-        if (bibliotecaUsuario.contains(m.getTitulo())) {
-            bibliotecaUsuario.remove(m.getTitulo());
-            configurarEstiloBotonBiblio(btn, false);
-        } else {
-            bibliotecaUsuario.add(m.getTitulo());
-            configurarEstiloBotonBiblio(btn, true);
-        }
-        guardarBiblioteca();
+        ScrollPane scroll = new ScrollPane(grid);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
+        viewContainer.getChildren().setAll(scroll);
     }
 
     private void mostrarNotificacion(String mensaje) {
@@ -268,8 +423,7 @@ public class MainController {
         pause.play();
     }
 
-    @FXML
-    private void toggleMenu() {
+    @FXML private void toggleMenu() {
         TranslateTransition transition = new TranslateTransition(Duration.millis(300), drawerMenu);
         transition.setToX(menuVisible ? -MENU_WIDTH : 0);
         menuVisible = !menuVisible;
