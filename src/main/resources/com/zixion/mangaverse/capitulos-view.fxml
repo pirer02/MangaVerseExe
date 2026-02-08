@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.effect.BoxBlur?>
 <?import javafx.geometry.Insets?>
@@ -13,13 +9,14 @@
 <?import javafx.scene.text.TextFlow?>
 <?import javafx.scene.text.Text?>
 
-<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zixion.mangaverse.controllers.CapitulosController">
+<StackPane fx:id="contenedorPrincipal" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zixion.mangaverse.controllers.CapitulosController">
 
-    <ImageView fx:id="bgImage" fitHeight="800.0" fitWidth="1200.0" preserveRatio="false">
+    <ImageView fx:id="bgImage" preserveRatio="false">
         <effect>
             <BoxBlur height="50.0" iterations="3" width="50.0" />
         </effect>
     </ImageView>
+
     <AnchorPane style="-fx-background-color: rgba(0,0,0,0.7);" />
 
     <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;">
@@ -29,50 +26,39 @@
                     <Insets bottom="30.0" left="40.0" right="40.0" top="40.0" />
                 </padding>
 
-                <Button onAction="#volverABiblioteca" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-radius: 5;" text="← Volver a Biblioteca">
-                    <font>
-                        <Font name="System Bold" size="14.0" />
-                    </font></Button>
+                <Button onAction="#volverAlInicio"
+                        text="← Volver al Inicio"
+                        style="-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-radius: 5; -fx-font-weight: bold; -fx-font-size: 14px; -fx-cursor: hand;" />
 
                 <HBox spacing="30.0">
-                    <ImageView fx:id="portadaImg" fitHeight="350.0" fitWidth="240.0" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);" />
+                    <ImageView fx:id="portadaImg" fitHeight="350.0" fitWidth="240.0" preserveRatio="true"
+                               style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 10, 0, 0, 0);" />
 
                     <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                        <Label fx:id="lblTitulo" style="-fx-text-fill: white;" text="Título del Manga" wrapText="true">
-                            <font>
-                                <Font name="System Bold" size="48.0" />
-                            </font>
-                        </Label>
+                        <Label fx:id="lblTitulo" text="Título del Manga" wrapText="true"
+                               style="-fx-text-fill: white; -fx-font-size: 48px; -fx-font-weight: bold;" />
 
                         <HBox spacing="15.0">
-                            <Label fx:id="lblEstado" style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;" text="ESTADO" />
-                            <Label fx:id="lblTipo" style="-fx-border-color: white; -fx-text-fill: white; -fx-padding: 4 10; -fx-border-radius: 4;" text="TIPO" />
+                            <Label fx:id="lblEstado" text="ESTADO"
+                                   style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;" />
+                            <Label fx:id="lblTipo" text="TIPO"
+                                   style="-fx-border-color: white; -fx-text-fill: white; -fx-padding: 4 10; -fx-border-radius: 4;" />
                         </HBox>
 
                         <FlowPane fx:id="contenedorGeneros" hgap="10.0" vgap="10.0" />
 
-                        <Label style="-fx-text-fill: #cccccc;" text="Sinopsis">
-                            <font>
-                                <Font name="System Bold" size="18.0" />
-                            </font>
-                            <VBox.margin>
-                                <Insets top="10.0" />
-                            </VBox.margin>
+                        <Label text="Sinopsis" style="-fx-text-fill: #cccccc; -fx-font-size: 18px; -fx-font-weight: bold;">
+                            <VBox.margin><Insets top="10.0" /></VBox.margin>
                         </Label>
                         <TextFlow>
-                            <Text fx:id="txtSinopsis" fill="#dddddd" style="-fx-font-size: 16px;" text="Aquí va la descripción..." />
+                            <Text fx:id="txtSinopsis" fill="#dddddd" text="Aquí va la descripción..." style="-fx-font-size: 16px;" />
                         </TextFlow>
                     </VBox>
                 </HBox>
 
                 <HBox style="-fx-border-color: transparent transparent #555 transparent; -fx-border-width: 2;">
-                    <Label style="-fx-text-fill: white;" text="Capítulos">
-                        <font>
-                            <Font name="System Bold" size="24.0" />
-                        </font>
-                        <padding>
-                            <Insets bottom="10.0" />
-                        </padding>
+                    <Label text="Capítulos" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;">
+                        <padding><Insets bottom="10.0" /></padding>
                     </Label>
                 </HBox>
 
@@ -81,22 +67,18 @@
                         <Label text="Capítulos totales:" style="-fx-text-fill: #888; -fx-font-size: 13px;" />
                         <Label fx:id="lblTotalCapitulos" text="0" style="-fx-text-fill: #e50914; -fx-font-weight: bold; -fx-font-size: 15px;" />
                     </HBox>
-
                     <Region HBox.hgrow="ALWAYS" />
-
                     <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="250.0" prefWidth="250.0"
                           style="-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 10; -fx-padding: 8 12; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;">
                         <Label text="🔍" style="-fx-text-fill: #aaa;" />
                         <TextField fx:id="txtBusqueda" promptText="Buscar..."
-                                   style="-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 13px;"
-                                   HBox.hgrow="ALWAYS" />
+                                   style="-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 13px;" HBox.hgrow="ALWAYS" />
                     </HBox>
                 </HBox>
 
                 <ListView fx:id="listaCapitulos" VBox.vgrow="ALWAYS"
                           style="-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 10 0 0 0;"
                           stylesheets="@estilos-lista.css" />
-
             </VBox>
         </content>
     </ScrollPane>

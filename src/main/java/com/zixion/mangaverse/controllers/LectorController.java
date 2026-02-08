@@ -1,5 +1,6 @@
 package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.models.Manga;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -21,122 +22,78 @@ public class LectorController {
     @FXML private VBox contenedorPaginas;
     @FXML private Label lblCapitulo;
     @FXML private ScrollPane scrollLector;
-    @FXML private Button btnAnterior;
-    @FXML private Button btnSiguiente;
+    @FXML private Button btnAnterior, btnSiguiente;
 
     private MainController mainController;
-    private List<String> listaNombresCapitulos; // Nombres de los archivos (.cbz)
+    private List<String> listaNombresCapitulos;
     private int indiceActual;
-    private String mangaId;
+    private Manga mangaActual;
     private volatile boolean cargando = false;
 
-    /**
-     * Método principal para iniciar el lector
-     */
-    public void inicializarLector(List<String> capitulos, int indice, String mangaId, MainController main) {
-        this.listaNombresCapitulos = capitulos;
-        this.indiceActual = indice;
-        this.mangaId = mangaId;
+    public void inicializarLector(List<String> caps, int index, Manga manga, MainController main) {
+        this.listaNombresCapitulos = caps;
+        this.indiceActual = index;
+        this.mangaActual = manga;
         this.mainController = main;
-
         cargarCapituloActual();
     }
 
     private void cargarCapituloActual() {
         detenerCarga();
-        String nombreArchivo = listaNombresCapitulos.get(indiceActual);
-        lblCapitulo.setText("Leyendo: " + nombreArchivo.replace(".cbz", ""));
-
-        // Bloqueamos botones mientras descarga
-        btnAnterior.setDisable(true);
-        btnSiguiente.setDisable(true);
+        String file = listaNombresCapitulos.get(indiceActual);
+        lblCapitulo.setText("Leyendo: " + file.replace(".cbz", ""));
+        btnAnterior.setDisable(true); btnSiguiente.setDisable(true);
         contenedorPaginas.getChildren().clear();
         scrollLector.setVvalue(0);
 
-        // Tarea para descargar y luego procesar el ZIP
-        Task<File> downloadTask = new Task<>() {
-            @Override
-            protected File call() throws Exception {
-                return mainController.getMangaService().descargarArchivo(mangaId, nombreArchivo);
+        Task<File> task = new Task<>() {
+            @Override protected File call() throws Exception {
+                return mainController.getMangaService().descargarArchivo(mangaActual.getTitulo().replace(" ", "_"), file);
             }
         };
-
-        downloadTask.setOnSucceeded(e -> {
-            File archivoCbz = downloadTask.getValue();
-            procesarCbz(archivoCbz);
-            // Habilitar botones según posición
+        task.setOnSucceeded(e -> {
+            procesarCbz(task.getValue());
             btnAnterior.setDisable(indiceActual == 0);
             btnSiguiente.setDisable(indiceActual == listaNombresCapitulos.size() - 1);
         });
-
-        new Thread(downloadTask).start();
+        new Thread(task).start();
     }
 
-    private void procesarCbz(File archivoCbz) {
+    private void procesarCbz(File cbz) {
         cargando = true;
         new Thread(() -> {
-            try (ZipFile zipFile = new ZipFile(archivoCbz)) {
-                TreeMap<String, ZipEntry> entradasOrdenadas = new TreeMap<>();
-                Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-                while (entries.hasMoreElements()) {
-                    ZipEntry entry = entries.nextElement();
-                    if (!entry.isDirectory() && esImagen(entry.getName())) {
-                        entradasOrdenadas.put(entry.getName(), entry);
-                    }
+            try (ZipFile zf = new ZipFile(cbz)) {
+                TreeMap<String, ZipEntry> map = new TreeMap<>();
+                Enumeration<? extends ZipEntry> en = zf.entries();
+                while (en.hasMoreElements()) {
+                    ZipEntry ze = en.nextElement();
+                    if (!ze.isDirectory() && esImg(ze.getName())) map.put(ze.getName(), ze);
                 }
-
-                for (ZipEntry entry : entradasOrdenadas.values()) {
+                for (ZipEntry ze : map.values()) {
                     if (!cargando) break;
-
-                    try (InputStream is = zipFile.getInputStream(entry)) {
+                    try (InputStream is = zf.getInputStream(ze)) {
                         Image img = new Image(is);
                         Platform.runLater(() -> {
-                            ImageView iv = new ImageView(img);
-                            iv.setPreserveRatio(true);
-                            iv.setSmooth(true);
-
-                            // MÁXIMA CALIDAD: No estira si la imagen es pequeña,
-                            // pero se adapta si la ventana es más pequeña que la imagen.
+                            ImageView iv = new ImageView(img); iv.setPreserveRatio(true); iv.setSmooth(true);
                             iv.fitWidthProperty().bind(javafx.beans.binding.Bindings.createDoubleBinding(
-                                    () -> Math.min(img.getWidth(), scrollLector.getWidth() - 30),
-                                    scrollLector.widthProperty()
-                            ));
-
+                                    () -> Math.min(img.getWidth(), scrollLector.getWidth() - 30), scrollLector.widthProperty()));
                             contenedorPaginas.getChildren().add(iv);
                         });
                         Thread.sleep(40);
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }).start();
     }
 
-    @FXML private void capituloSiguiente() {
-        if (indiceActual < listaNombresCapitulos.size() - 1) {
-            indiceActual++;
-            cargarCapituloActual();
-        }
-    }
-
-    @FXML private void capituloAnterior() {
-        if (indiceActual > 0) {
-            indiceActual--;
-            cargarCapituloActual();
-        }
-    }
-
-    private boolean esImagen(String name) {
-        String n = name.toLowerCase();
-        return n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png") || n.endsWith(".webp");
-    }
-
+    @FXML private void capituloSiguiente() { if (indiceActual < listaNombresCapitulos.size() - 1) { indiceActual++; cargarCapituloActual(); } }
+    @FXML private void capituloAnterior() { if (indiceActual > 0) { indiceActual--; cargarCapituloActual(); } }
+    private boolean esImg(String n) { String l = n.toLowerCase(); return l.endsWith(".jpg") || l.endsWith(".jpeg") || l.endsWith(".png") || l.endsWith(".webp"); }
     public void detenerCarga() { this.cargando = false; }
 
     @FXML private void cerrarLector() {
         detenerCarga();
-        mainController.abrirBiblioteca();
+        // Vuelve a la vista de capítulos del manga que se estaba leyendo
+        mainController.irACapitulos(mangaActual);
     }
 }

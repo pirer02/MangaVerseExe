@@ -18,18 +18,18 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CapitulosController {
+    @FXML private StackPane contenedorPrincipal; // Asegúrate de que el StackPane raíz en el FXML tenga fx:id="contenedorPrincipal"
     @FXML private Label lblTitulo;
     @FXML private ListView<String> listaCapitulos;
-    private MainController mainController;
-
     @FXML private ImageView bgImage;
     @FXML private ImageView portadaImg;
     @FXML private Label lblEstado;
@@ -39,10 +39,34 @@ public class CapitulosController {
     @FXML private TextField txtBusqueda;
     @FXML private Label lblTotalCapitulos;
 
+    private MainController mainController;
     private List<String> todosLosCapitulos = new ArrayList<>();
+    private Manga mangaActual;
+
+    @FXML
+    public void initialize() {
+        // SOLUCIÓN AL PROBLEMA DE PANTALLA:
+
+        // 1. Managed=false: Hace que el layout ignore el tamaño real de la imagen
+        // para cálculos, evitando que "empuje" otros elementos.
+        bgImage.setManaged(false);
+
+        // 2. Binding: La imagen se estira manualmente al tamaño del panel.
+        bgImage.fitWidthProperty().bind(contenedorPrincipal.widthProperty());
+        bgImage.fitHeightProperty().bind(contenedorPrincipal.heightProperty());
+
+        // 3. CLIPPING (CRÍTICO): Creamos una máscara de recorte.
+        // Esto obliga a que cualquier pixel de la imagen que se salga del
+        // tamaño del panel sea invisible y no interfiera con otros elementos.
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(contenedorPrincipal.widthProperty());
+        clip.heightProperty().bind(contenedorPrincipal.heightProperty());
+        contenedorPrincipal.setClip(clip);
+    }
 
     public void setDatos(String titulo, List<String> capitulos, MainController main, Manga manga) {
         this.mainController = main;
+        this.mangaActual = manga;
         lblTitulo.setText(titulo);
 
         todosLosCapitulos.clear();
@@ -62,7 +86,6 @@ public class CapitulosController {
         bgImage.setImage(imagen);
         cargarInfoExtra();
 
-        // EVENTO DE CLIC: Ahora llama directamente a abrirElLector
         listaCapitulos.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 String itemSeleccionado = listaCapitulos.getSelectionModel().getSelectedItem();
@@ -74,8 +97,6 @@ public class CapitulosController {
         configurarDisenoLista();
     }
 
-    // --- EL MÉTODO descargarYAbrir HA SIDO ELIMINADO PORQUE EL LECTOR AHORA DESCARGA SOLO ---
-
     private void abrirElLector(String nombreCapituloSeleccionado) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
@@ -84,57 +105,21 @@ public class CapitulosController {
             LectorController controller = loader.getController();
             mainController.setCurrentController(controller);
 
-            String mangaId = lblTitulo.getText().replace(" ", "_");
-
-            // Creamos la lista completa de archivos CBZ para que el lector pueda navegar
             List<String> listaArchivosCbz = todosLosCapitulos.stream()
                     .map(s -> s + ".cbz")
                     .toList();
 
             int indice = listaArchivosCbz.indexOf(nombreCapituloSeleccionado);
 
-            // Pasamos los datos: Lista de capítulos, índice seleccionado e ID del manga
-            controller.inicializarLector(listaArchivosCbz, indice, mangaId, mainController);
-
+            controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController);
             mainController.getViewContainer().getChildren().setAll(lectorNode);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void configurarDisenoLista() {
-        listaCapitulos.setCellFactory(param -> new ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                    setStyle("-fx-background-color: transparent;");
-                } else {
-                    HBox contenedor = new HBox(15);
-                    contenedor.setAlignment(Pos.CENTER_LEFT);
-                    contenedor.setPadding(new Insets(10, 15, 10, 15));
-                    contenedor.getStyleClass().add("fila-capitulo");
-
-                    Label icono = new Label("▶");
-                    icono.setStyle("-fx-text-fill: #e50914; -fx-font-size: 16px;");
-
-                    Label nombre = new Label(item);
-                    nombre.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-
-                    Region spacer = new Region();
-                    HBox.setHgrow(spacer, Priority.ALWAYS);
-
-                    Label btnLeer = new Label("LEER");
-                    btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
-
-                    contenedor.getChildren().addAll(icono, nombre, spacer, btnLeer);
-                    setGraphic(contenedor);
-                    setStyle("-fx-background-color: transparent; -fx-padding: 5 0; -fx-cursor: hand;");
-                }
-            }
-        });
+    @FXML private void volverAlInicio() {
+        mainController.abrirInicio();
     }
 
     private void filtrarCapitulos(String texto) {
@@ -187,7 +172,38 @@ public class CapitulosController {
         new Thread(task).start();
     }
 
-    @FXML private void volverABiblioteca() {
-        mainController.abrirBiblioteca();
+    private void configurarDisenoLista() {
+        listaCapitulos.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    HBox contenedor = new HBox(15);
+                    contenedor.setAlignment(Pos.CENTER_LEFT);
+                    contenedor.setPadding(new Insets(10, 15, 10, 15));
+                    contenedor.getStyleClass().add("fila-capitulo");
+
+                    Label icono = new Label("▶");
+                    icono.setStyle("-fx-text-fill: #e50914; -fx-font-size: 16px;");
+
+                    Label nombre = new Label(item);
+                    nombre.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    Label btnLeer = new Label("LEER");
+                    btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
+
+                    contenedor.getChildren().addAll(icono, nombre, spacer, btnLeer);
+                    setGraphic(contenedor);
+                    setStyle("-fx-background-color: transparent; -fx-padding: 5 0; -fx-cursor: hand;");
+                }
+            }
+        });
     }
 }
