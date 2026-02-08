@@ -343,7 +343,7 @@ public class MainController {
 
     private void irACapitulos(Manga m) {
         try {
-            List<String> caps = mangaService.obtenerCapitulos(m.getTitulo());
+            List<String> caps = mangaService.obtenerCapitulos(m.getTitulo(), m);
             FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "capitulos-view.fxml"));
             Node node = loader.load();
             CapitulosController controller = loader.getController();

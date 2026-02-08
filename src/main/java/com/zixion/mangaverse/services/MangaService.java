@@ -21,10 +21,18 @@ public class MangaService {
     private String IP_LOCAL = "ipoculto/";
     private String IP_PUBLICA = "http://95.61.154.61:5000/";
 
-    private final String CACHE_FILE = Main.LISTADO_FOLDER + File.separator + "cache_capitulos.json";
+    // CAMBIO 1: Usamos un directorio en lugar de un solo archivo
+    private final File CACHE_DIR = new File(Main.LISTADO_FOLDER, "cache_capitulos");
 
-    // Cache temporal en memoria para no saturar el servidor con cada fila de Netflix
+    // Cache temporal en memoria para lista de mangas
     private List<Manga> cacheMangasMemoria = new ArrayList<>();
+
+    public MangaService() {
+        // Aseguramos que la carpeta de caché exista al iniciar el servicio
+        if (!CACHE_DIR.exists()) {
+            CACHE_DIR.mkdirs();
+        }
+    }
 
     private boolean isServerAlive(String url) {
         try {
@@ -49,26 +57,17 @@ public class MangaService {
         return IP_PUBLICA;
     }
 
-    /**
-     * MÉTODO NUEVO: Filtra los mangas por género.
-     * Si no tienes un endpoint en la API para esto, filtramos la lista general en Java.
-     */
+    // ... (El método obtenerMangasPorGenero se mantiene igual) ...
     public List<Manga> obtenerMangasPorGenero(String genero) {
-        // Si la caché está vacía, cargamos primero
         if (cacheMangasMemoria.isEmpty()) {
             obtenerMangasDesdeServidor();
         }
-
-        // Filtramos por género (esto asume que el objeto Manga tiene la lista de géneros cargada)
-        // Como la carga inicial no trae géneros, aquí podrías llamar a un endpoint
-        // específico si tu API lo soporta, ej: url/mangas/filter?genre=shonen
-
-        // Simulación: Si no hay filtro en API, devolvemos una sublista aleatoria para el diseño
         List<Manga> filtrados = new ArrayList<>(cacheMangasMemoria);
         Collections.shuffle(filtrados);
         return filtrados.stream().limit(10).collect(Collectors.toList());
     }
 
+    // ... (El método obtenerMangasDesdeServidor se mantiene igual) ...
     public List<Manga> obtenerMangasDesdeServidor() {
         List<Manga> lista = new ArrayList<>();
         String urlFinal = getBaseUrl();
@@ -92,7 +91,7 @@ public class MangaService {
                     manga.setUrlPortada(urlPortada);
                     lista.add(manga);
                 }
-                this.cacheMangasMemoria = lista; // Guardamos en memoria
+                this.cacheMangasMemoria = lista;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -100,15 +99,24 @@ public class MangaService {
         return lista;
     }
 
-    public List<String> obtenerCapitulos(String mangaNombre) {
-        // Normalizar nombre para URL (espacios a guiones bajos)
+    /**
+     * CAMBIO 2: Método obtenerCapitulos con lógica de expiración
+     * @param mangaNombre El nombre del manga
+     */
+    public List<String> obtenerCapitulos(String mangaNombre, Manga manga) {
         String mangaId = mangaNombre.replace(" ", "_");
+        File mangaCacheFile = new File(CACHE_DIR, mangaId + ".json");
 
-        List<String> capsCache = leerCacheCapitulos(mangaId);
-        if (!capsCache.isEmpty()) return capsCache;
+        // Verificamos si podemos usar la caché
+        if (debeUsarCache(mangaCacheFile, manga.getEstado())) {
+            System.out.println("Usando caché para: " + mangaNombre);
+            return leerCacheIndividual(mangaCacheFile);
+        }
 
+        System.out.println("Descargando lista fresca para: " + mangaNombre);
         List<String> caps = new ArrayList<>();
         String urlFinal = getBaseUrl();
+
         try {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
@@ -121,14 +129,39 @@ public class MangaService {
                 for (int i = 0; i < array.length(); i++) {
                     caps.add(array.getString(i));
                 }
-                guardarEnCache(mangaId, caps);
+                // Guardamos en archivo individual
+                guardarEnCacheIndividual(mangaCacheFile, caps);
             }
         } catch (Exception e) {
+            // Fallback: Si falla la red, intentamos devolver caché aunque sea vieja
+            if (mangaCacheFile.exists()) {
+                return leerCacheIndividual(mangaCacheFile);
+            }
             return new ArrayList<>();
         }
         return caps;
     }
 
+    // CAMBIO 3: Lógica de decisión de caché (La "Condición")
+    private boolean debeUsarCache(File archivo, String estado) {
+        // 1. Si no existe el archivo, no hay caché que valga
+        if (!archivo.exists()) return false;
+
+        // 2. Si el estado es FINALIZADO, la caché es válida para siempre
+        if (estado != null && estado.toUpperCase().contains("FINALIZADO")) {
+            return true;
+        }
+
+        // 3. Si está en emisión (o estado desconocido), usamos TTL de 24 horas
+        long ttlMillis = 24 * 60 * 60 * 1000; // 24 horas
+        long diferencia = System.currentTimeMillis() - archivo.lastModified();
+
+        // Si la diferencia es menor al TTL, la caché es válida. Si es mayor, devolvemos false (refrescar).
+        return diferencia < ttlMillis;
+    }
+
+
+    // ... (El método descargarArchivo se mantiene igual) ...
     public File descargarArchivo(String mangaNombre, String nombreCapitulo) throws Exception {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl();
@@ -136,7 +169,6 @@ public class MangaService {
 
         if (destination.exists()) return destination;
 
-        // URL encode para caracteres especiales en el nombre del capítulo
         String nombreCapEncoded = nombreCapitulo.replace(" ", "%20");
         String urlDescarga = urlFinal + "download/" + mangaId + "/" + nombreCapEncoded;
 
@@ -152,6 +184,7 @@ public class MangaService {
         else throw new IOException("Error en servidor: " + response.statusCode());
     }
 
+    // ... (El método obtenerInfoManga se mantiene igual) ...
     public Manga obtenerInfoManga(String mangaNombre) {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl() + "mangas/" + mangaId + "/info";
@@ -183,27 +216,30 @@ public class MangaService {
         return new Manga(mangaNombre, null, null, "Sin descripción", new ArrayList<>(), "", "");
     }
 
-    // --- MÉTODOS DE CACHÉ JSON ---
-    private void guardarEnCache(String mangaNombre, List<String> capitulos) {
+    // --- NUEVOS MÉTODOS DE CACHÉ INDIVIDUAL ---
+
+    private void guardarEnCacheIndividual(File archivo, List<String> capitulos) {
         try {
-            File file = new File(CACHE_FILE);
-            JSONObject root = file.exists() ? new JSONObject(Files.readString(file.toPath())) : new JSONObject();
-            root.put(mangaNombre, new JSONArray(capitulos));
-            Files.writeString(file.toPath(), root.toString());
-        } catch (Exception e) { }
+            // Creamos un JSON simple con la lista
+            JSONArray jsonArray = new JSONArray(capitulos);
+            // Sobreescribimos el archivo. Al escribir, se actualiza automáticamente el 'lastModified'
+            Files.writeString(archivo.toPath(), jsonArray.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private List<String> leerCacheCapitulos(String mangaNombre) {
+    private List<String> leerCacheIndividual(File archivo) {
         List<String> caps = new ArrayList<>();
         try {
-            File file = new File(CACHE_FILE);
-            if (!file.exists()) return caps;
-            JSONObject root = new JSONObject(Files.readString(file.toPath()));
-            if (root.has(mangaNombre)) {
-                JSONArray array = root.getJSONArray(mangaNombre);
-                for (int i = 0; i < array.length(); i++) caps.add(array.getString(i));
+            String content = Files.readString(archivo.toPath());
+            JSONArray array = new JSONArray(content);
+            for (int i = 0; i < array.length(); i++) {
+                caps.add(array.getString(i));
             }
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return caps;
     }
 }

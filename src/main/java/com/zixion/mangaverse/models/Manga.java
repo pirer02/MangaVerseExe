@@ -50,4 +50,28 @@ public class Manga {
     public void setUrlPortada(String urlPortada) {
         this.urlPortada = urlPortada;
     }
+    public String getSinopsis() {
+        return sinopsis;
+    }
+    public void setSinopsis(String sinopsis) {
+        this.sinopsis = sinopsis;
+    }
+    public List<String> getGeneros() {
+        return generos;
+    }
+    public void setGeneros(List<String> generos) {
+        this.generos = generos;
+    }
+    public String getEstado() {
+        return estado;
+    }
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+    public String getTipo() {
+        return tipo;
+    }
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
 }
