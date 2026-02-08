@@ -14,10 +14,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -433,4 +430,87 @@ public class MainController {
     public MangaService getMangaService() { return mangaService; }
     public StackPane getViewContainer() { return viewContainer; }
     public void setCurrentController(Object controller) { }
+
+
+    @FXML
+    private void borrarDatos() {
+        // 1. Crear la alerta
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Borrar todos los datos");
+        alert.setHeaderText("¿Estás seguro de que quieres reiniciar?");
+        alert.setContentText("Esta acción es irreversible:\n\n" +
+                "• Se borrará tu biblioteca personal.\n" +
+                "• Se eliminarán todos los capítulos descargados.\n" +
+                "• Se eliminará la caché de listas.\n\n" +
+                "El programa quedará como recién instalado.");
+
+        // 2. Estilar el diálogo para que el texto sea blanco
+        DialogPane dialogPane = alert.getDialogPane();
+
+        // Fondo oscuro para el panel
+        dialogPane.setStyle("-fx-background-color: #2c3e50;");
+
+        // Buscamos todos los Labels (incluyendo cabecera y contenido) y forzamos el color blanco
+        // Usamos Platform.runLater para asegurar que el diálogo se ha renderizado antes de buscar los nodos
+        dialogPane.getScene().getStylesheets().add(getClass().getResource(Utils.RESOURCES_PATH + "estilos-lista.css").toExternalForm());
+
+        // Una forma infalible inline si no quieres depender del CSS externo para esto:
+        alert.getDialogPane().lookupAll(".label").forEach(node -> {
+            if (node instanceof Label) {
+                ((Label) node).setStyle("-fx-text-fill: white;");
+            }
+        });
+
+        // 3. Mostrar y esperar respuesta
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            realizarBorradoCompleto();
+        }
+    }
+
+    private void realizarBorradoCompleto() {
+        try {
+            // A. Borrar archivo de biblioteca (JSON)
+            if (ARCHIVO_BIBLIOTECA.exists()) {
+                Files.delete(ARCHIVO_BIBLIOTECA.toPath());
+            }
+
+            // B. Borrar carpetas de caché (Recursivo)
+            File carpetaCapitulos = new File(Main.CAPITULOS_FOLDER);
+            File carpetaListas = new File(Main.LISTADO_FOLDER);
+
+            borrarDirectorioRecursivo(carpetaCapitulos);
+            borrarDirectorioRecursivo(carpetaListas);
+
+            // C. Reiniciar memoria de la aplicación
+            datosUsuario.clear();
+
+            // Recrear carpetas vacías para evitar errores si se intenta descargar inmediatamente
+            carpetaCapitulos.mkdirs();
+            carpetaListas.mkdirs();
+
+            // D. Feedback al usuario y recarga
+            mostrarNotificacion("Sistema restaurado correctamente.");
+            abrirInicio(); // Recargar la vista de inicio
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            mostrarNotificacion("Error al borrar algunos archivos.");
+        }
+    }
+
+    // Método auxiliar para borrar carpetas con contenido dentro
+    private void borrarDirectorioRecursivo(File archivo) {
+        if (archivo.isDirectory()) {
+            File[] archivos = archivo.listFiles();
+            if (archivos != null) {
+                for (File f : archivos) {
+                    borrarDirectorioRecursivo(f);
+                }
+            }
+        }
+        // Finalmente borra el archivo o carpeta vacía
+        archivo.delete();
+    }
+
 }

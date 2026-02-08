@@ -66,9 +66,21 @@
 
             <Button text="Inicio" onAction="#abrirInicio"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
-
+            
             <Button text="Biblioteca" onAction="#abrirBiblioteca"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
+
+            <Region VBox.vgrow="ALWAYS" />
+
+            <Separator opacity="0.3" />
+
+            <Button text="🗑 Borrar Datos" onAction="#borrarDatos"
+                    style="-fx-background-color: transparent; -fx-text-fill: #ff6b6b; -fx-font-size: 14; -fx-cursor: hand; -fx-alignment: CENTER_LEFT; -fx-font-weight: bold;"
+                    maxWidth="Infinity">
+                <tooltip>
+                    <Tooltip text="Elimina descargas y biblioteca" />
+                </tooltip>
+            </Button>
         </children>
     </VBox>
 
