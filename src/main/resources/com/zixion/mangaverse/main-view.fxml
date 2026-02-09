@@ -4,40 +4,44 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.image.Image?>
 
-<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.MainController" style="-fx-background-color: #2c3e50;">
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.MainController" style="-fx-background-color: #141414;">
 
     <AnchorPane fx:id="mainContent" style="-fx-background-color: #2c3e50;">
         <children>
-            <StackPane fx:id="viewContainer" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-                       AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="60.0"
-                       style="-fx-background-color: transparent;"/>
-
-            <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="15.0"
+            <HBox fx:id="topBar" alignment="CENTER_LEFT" prefHeight="60.0" spacing="15.0"
                   AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"
                   style="-fx-background-color: linear-gradient(to right, #600000, #000000); -fx-padding: 0 20 0 20;">
                 <children>
-                    <Button text="☰" onAction="#toggleMenu"
+                    <Button fx:id="btnMenu" text="☰" onAction="#toggleMenu"
                             style="-fx-font-size: 24; -fx-background-color: transparent; -fx-text-fill: white; -fx-cursor: hand;"/>
+
                     <Label text="MangaVerse"
                            style="-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: white;"/>
 
                     <Pane HBox.hgrow="ALWAYS" />
 
-                    <TextField fx:id="searchBar" promptText="Buscar manga..."
-                               style="-fx-background-color: rgba(255, 255, 255, 0.15);
-                                      -fx-text-fill: white;
-                                      -fx-prompt-text-fill: #bdc3c7;
-                                      -fx-background-radius: 20;
-                                      -fx-padding: 8 15 8 15;
-                                      -fx-min-width: 250;
-                                      -fx-border-color: rgba(255, 255, 255, 0.3);
-                                      -fx-border-radius: 20;"/>
+                    <HBox fx:id="searchBoxContainer" alignment="CENTER_RIGHT">
+                        <TextField fx:id="searchBar" promptText="Buscar manga..."
+                                   style="-fx-background-color: rgba(255, 255, 255, 0.15);
+                                          -fx-text-fill: white;
+                                          -fx-prompt-text-fill: #bdc3c7;
+                                          -fx-background-radius: 20;
+                                          -fx-padding: 8 15 8 15;
+                                          -fx-min-width: 250;
+                                          -fx-border-color: rgba(255, 255, 255, 0.3);
+                                          -fx-border-radius: 20;"/>
+                    </HBox>
                 </children>
             </HBox>
+
+            <StackPane fx:id="viewContainer" onMouseClicked="#onContentClick"
+                       AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                       AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="60.0"
+                       style="-fx-background-color: transparent;" />
         </children>
     </AnchorPane>
 
-    <StackPane fx:id="loadingOverlay" visible="false" style="-fx-background-color: rgba(0,0,0,0.7);">
+    <StackPane fx:id="loadingOverlay" visible="false" style="-fx-background-color: rgba(0,0,0,0.7);" mouseTransparent="false">
         <VBox alignment="CENTER" spacing="10">
             <ProgressIndicator fx:id="loadingSpinner" maxWidth="60" maxHeight="60"
                                style="-fx-progress-color: #e50914;"/>
@@ -70,10 +74,13 @@
 
             <Separator opacity="0.3" />
 
-            <Button text="Inicio" onAction="#abrirInicio"
+            <Button text="🏠 Inicio" onAction="#abrirInicio"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
 
-            <Button text="Biblioteca" onAction="#abrirBiblioteca"
+            <Button text="🧭 Explorar" onAction="#abrirExplorar"
+                    style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
+
+            <Button text="📚 Biblioteca" onAction="#abrirBiblioteca"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
 
             <Region VBox.vgrow="ALWAYS" />

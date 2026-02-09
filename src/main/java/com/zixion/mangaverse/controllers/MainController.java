@@ -20,6 +20,7 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
@@ -39,9 +40,14 @@ public class MainController {
 
     @FXML private VBox drawerMenu;
     @FXML private StackPane viewContainer;
-    @FXML private TextField searchBar;
 
-    // Control del Spinner Global
+    // Elementos para el menú Push y Buscador
+    @FXML private AnchorPane mainContent;
+    @FXML private HBox searchBoxContainer;
+    @FXML private TextField searchBar;
+    @FXML private Button btnMenu;
+
+    // Spinner de carga
     @FXML private StackPane loadingOverlay;
     @FXML private ProgressIndicator loadingSpinner;
 
@@ -51,6 +57,17 @@ public class MainController {
     private final File ARCHIVO_BIBLIOTECA = new File(Main.APP_FOLDER, "biblioteca.json");
 
     private List<Manga> listaMaestra = new ArrayList<>();
+
+    // --- VARIABLES DE ESTADO Y FILTROS ---
+    private boolean enVistaExplorar = false;
+    private boolean enVistaBiblioteca = false;
+
+    private String filtroGeneroGuardado = "Todos los Géneros";
+    private String filtroEstadoGuardado = "Todos los Estados";
+
+    private ComboBox<String> cmbGeneroExplorar;
+    private ComboBox<String> cmbEstadoExplorar;
+    private FlowPane gridExplorar;
 
     public static class DatosUsuarioManga {
         public boolean enBiblioteca = false;
@@ -74,23 +91,32 @@ public class MainController {
 
         if (searchBar != null) {
             searchBar.textProperty().addListener((obs, old, newText) -> {
-                if (newText == null || newText.trim().isEmpty()) {
-                    abrirInicio();
+                if (enVistaExplorar) {
+                    filtrarExploracion();
+                } else if (enVistaBiblioteca) {
+                    construirVistaBiblioteca();
                 } else {
-                    ejecutarBusqueda(newText.trim().toLowerCase());
+                    if (newText == null || newText.trim().isEmpty()) {
+                        abrirInicio();
+                    } else {
+                        ejecutarBusqueda(newText.trim().toLowerCase());
+                    }
                 }
             });
         }
     }
 
     public void setCargando(boolean cargando) {
-        if (loadingOverlay != null) {
-            loadingOverlay.setVisible(cargando);
+        if (loadingOverlay != null) loadingOverlay.setVisible(cargando);
+    }
+
+    private void setBuscadorVisible(boolean visible) {
+        if (searchBoxContainer != null) {
+            searchBoxContainer.setVisible(visible);
         }
     }
 
     // --- CARGA DE DATOS ---
-
     private void cargarBiblioteca() {
         if (ARCHIVO_BIBLIOTECA.exists()) {
             try {
@@ -200,25 +226,27 @@ public class MainController {
 
     @FXML
     public void abrirInicio() {
+        enVistaExplorar = false;
+        enVistaBiblioteca = false;
+        setBuscadorVisible(true);
         if (menuVisible) toggleMenu();
 
         setCargando(true);
-        // Usamos PauseTransition para dar tiempo al thread de UI de mostrar el spinner
         PauseTransition pause = new PauseTransition(Duration.millis(50));
         pause.setOnFinished(e -> construirVistaInicio());
         pause.play();
     }
 
     private void construirVistaInicio() {
-        // Lista para rastrear todas las imágenes que vamos a crear
         List<Image> imagenesPendientes = new ArrayList<>();
-
         VBox mainLayout = new VBox(35);
         mainLayout.setPadding(new Insets(20, 0, 40, 0));
         mainLayout.setStyle("-fx-background-color: #141414;");
+
         ScrollPane scrollVertical = new ScrollPane(mainLayout);
         scrollVertical.setFitToWidth(true);
         scrollVertical.setStyle("-fx-background: #141414; -fx-background-color: #141414; -fx-border-color: transparent;");
+        aplicarScrollRapido(scrollVertical);
 
         List<Manga> continuar = listaMaestra.stream().filter(m -> {
             DatosUsuarioManga d = datosUsuario.get(m.getTitulo());
@@ -237,13 +265,14 @@ public class MainController {
             }
         }
         viewContainer.getChildren().setAll(scrollVertical);
-
-        // Ahora esperamos a que todas las imágenes estén cargadas (progress == 1.0)
         esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
     }
 
     @FXML
     public void abrirBiblioteca() {
+        enVistaExplorar = false;
+        enVistaBiblioteca = true;
+        setBuscadorVisible(true);
         if (menuVisible) toggleMenu();
 
         setCargando(true);
@@ -253,6 +282,7 @@ public class MainController {
     }
 
     private void construirVistaBiblioteca() {
+        String query = searchBar.getText() != null ? searchBar.getText().toLowerCase().trim() : "";
         List<Image> imagenesPendientes = new ArrayList<>();
 
         FlowPane grid = new FlowPane();
@@ -268,24 +298,25 @@ public class MainController {
 
         List<Manga> mangasConMusica = listaMaestra.stream().filter(m -> {
             DatosUsuarioManga d = datosUsuario.get(m.getTitulo());
-            return d != null && !d.canciones.isEmpty();
+            boolean match = d != null && !d.canciones.isEmpty();
+            if(!query.isEmpty()) return match && m.getTitulo().toLowerCase().contains(query);
+            return match;
         }).collect(Collectors.toList());
 
         if (!mangasConMusica.isEmpty()) {
-            // Pasamos la lista de rastreo
             VBox rowMusica = crearFilaHorizontal("♫ Mangas con Ambiente", mangasConMusica, imagenesPendientes);
-            Label subtitulo = new Label("(Haz clic en un manga para gestionar su música)");
-            subtitulo.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 12px; -fx-padding: 0 0 0 25;");
-            layoutBiblioteca.getChildren().addAll(rowMusica, subtitulo);
+            layoutBiblioteca.getChildren().add(rowMusica);
         }
 
         List<Manga> misMangas = listaMaestra.stream().filter(m -> {
             DatosUsuarioManga d = datosUsuario.get(m.getTitulo());
-            return d != null && d.enBiblioteca;
+            boolean match = d != null && d.enBiblioteca;
+            if(!query.isEmpty()) return match && m.getTitulo().toLowerCase().contains(query);
+            return match;
         }).collect(Collectors.toList());
 
         if (misMangas.isEmpty() && mangasConMusica.isEmpty()) {
-            Label emptyLabel = new Label("No has añadido mangas a tu biblioteca aún.");
+            Label emptyLabel = new Label("No hay resultados en tu biblioteca.");
             emptyLabel.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 16px;");
             grid.getChildren().add(emptyLabel);
         } else {
@@ -295,10 +326,168 @@ public class MainController {
         ScrollPane finalScroll = new ScrollPane(layoutBiblioteca);
         finalScroll.setFitToWidth(true);
         finalScroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
-        viewContainer.getChildren().setAll(finalScroll);
+        aplicarScrollRapido(finalScroll);
 
-        // Esperamos imágenes
+        viewContainer.getChildren().setAll(finalScroll);
         esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
+    }
+
+    @FXML
+    public void abrirExplorar() {
+        enVistaExplorar = true;
+        enVistaBiblioteca = false;
+        setBuscadorVisible(true);
+        if (menuVisible) toggleMenu();
+
+        setCargando(true);
+        PauseTransition pause = new PauseTransition(Duration.millis(50));
+        pause.setOnFinished(e -> construirVistaExplorar());
+        pause.play();
+    }
+
+    private void construirVistaExplorar() {
+        VBox layoutExplorar = new VBox(20);
+        layoutExplorar.setPadding(new Insets(20));
+        layoutExplorar.setStyle("-fx-background-color: #141414;");
+
+        Label lblTitulo = new Label("Explorar Catálogo");
+        lblTitulo.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        HBox filtrosBox = new HBox(15);
+        filtrosBox.setAlignment(Pos.CENTER_LEFT);
+
+        cmbGeneroExplorar = new ComboBox<>();
+        cmbGeneroExplorar.getItems().add("Todos los Géneros");
+        cmbGeneroExplorar.getItems().addAll(GENEROS_POOL);
+        cmbGeneroExplorar.setValue(filtroGeneroGuardado);
+        estilizarComboBox(cmbGeneroExplorar);
+
+        cmbEstadoExplorar = new ComboBox<>();
+        cmbEstadoExplorar.getItems().addAll("Todos los Estados", "Finalizado", "En Curso");
+        cmbEstadoExplorar.setValue(filtroEstadoGuardado);
+        estilizarComboBox(cmbEstadoExplorar);
+
+        cmbGeneroExplorar.setOnAction(e -> filtrarExploracion());
+        cmbEstadoExplorar.setOnAction(e -> filtrarExploracion());
+
+        filtrosBox.getChildren().addAll(
+                new Label("Filtrar por:") {{ setStyle("-fx-text-fill: #bdc3c7;"); }},
+                cmbGeneroExplorar,
+                cmbEstadoExplorar
+        );
+
+        gridExplorar = new FlowPane();
+        gridExplorar.setHgap(20); gridExplorar.setVgap(25);
+        gridExplorar.setStyle("-fx-background-color: #141414;");
+
+        layoutExplorar.getChildren().addAll(lblTitulo, filtrosBox, gridExplorar);
+
+        ScrollPane scroll = new ScrollPane(layoutExplorar);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
+        aplicarScrollRapido(scroll);
+
+        viewContainer.getChildren().setAll(scroll);
+
+        filtrarExploracion();
+    }
+
+    private void estilizarComboBox(ComboBox<String> cmb) {
+        cmb.setStyle("-fx-background-color: #333; -fx-text-fill: white; -fx-font-size: 13px;");
+    }
+
+    private void filtrarExploracion() {
+        if (!enVistaExplorar || gridExplorar == null) return;
+
+        String busquedaTexto = searchBar.getText() != null ? searchBar.getText().toLowerCase().trim() : "";
+        String generoSel = cmbGeneroExplorar.getValue();
+        String estadoSel = cmbEstadoExplorar.getValue();
+
+        filtroGeneroGuardado = generoSel;
+        filtroEstadoGuardado = estadoSel;
+
+        List<Image> imagenesPendientes = new ArrayList<>();
+        gridExplorar.getChildren().clear();
+
+        List<Manga> filtrados = listaMaestra.stream().filter(m -> {
+            boolean matchTexto = busquedaTexto.isEmpty() || m.getTitulo().toLowerCase().contains(busquedaTexto);
+            boolean matchGenero = generoSel == null || generoSel.equals("Todos los Géneros") ||
+                    (m.generos != null && m.generos.stream().anyMatch(g -> g.equalsIgnoreCase(generoSel)));
+            boolean matchEstado = true;
+            if (estadoSel != null && !estadoSel.equals("Todos los Estados")) {
+                String estadoManga = m.estado != null ? m.estado.toLowerCase() : "";
+                if (estadoSel.equals("Finalizado")) {
+                    matchEstado = estadoManga.contains("finalizado") || estadoManga.contains("terminado");
+                } else if (estadoSel.equals("En Curso")) {
+                    matchEstado = !estadoManga.contains("finalizado") && !estadoManga.contains("terminado");
+                }
+            }
+            return matchTexto && matchGenero && matchEstado;
+        }).collect(Collectors.toList());
+
+        if (filtrados.isEmpty()) {
+            Label empty = new Label("No se encontraron resultados con estos filtros.");
+            empty.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 16px; -fx-padding: 20;");
+            gridExplorar.getChildren().add(empty);
+            setCargando(false);
+        } else {
+            for (Manga m : filtrados) {
+                gridExplorar.getChildren().add(crearTarjetaManga(m, imagenesPendientes));
+            }
+            if (!imagenesPendientes.isEmpty()) {
+                setCargando(true);
+                esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
+            } else {
+                setCargando(false);
+            }
+        }
+    }
+
+    // --- LÓGICA DE MENÚ PUSH CORREGIDA ---
+
+    @FXML private void toggleMenu() {
+        TranslateTransition menuTransition = new TranslateTransition(Duration.millis(300), drawerMenu);
+        // MOVER SOLO EL CONTENEDOR DE VISTAS (NO LA BARRA SUPERIOR)
+        TranslateTransition viewTransition = new TranslateTransition(Duration.millis(300), viewContainer);
+
+        if (!menuVisible) {
+            // ABRIR: Menú entra (0), Mangas se desplazan (280)
+            menuTransition.setToX(0);
+            viewTransition.setToX(MENU_WIDTH);
+            // El botón de hamburguesa se quedará detrás del menú físicamente
+        } else {
+            // CERRAR: Menú sale (-280), Mangas vuelven (0)
+            menuTransition.setToX(-MENU_WIDTH);
+            viewTransition.setToX(0);
+        }
+
+        menuVisible = !menuVisible;
+        menuTransition.play();
+        viewTransition.play();
+    }
+
+    // Método para detectar clic en el área de mangas y cerrar menú
+    @FXML private void onContentClick() {
+        if (menuVisible) {
+            toggleMenu();
+        }
+    }
+
+    private void aplicarScrollRapido(ScrollPane scrollPane) {
+        final double VELOCIDAD_SCROLL = 4.0;
+        scrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (event.getDeltaY() != 0) {
+                event.consume();
+                double contenidoAlto = scrollPane.getContent().getBoundsInLocal().getHeight();
+                double visorAlto = scrollPane.getViewportBounds().getHeight();
+                double maxScroll = contenidoAlto - visorAlto;
+                if (maxScroll > 0) {
+                    double desplazamiento = -event.getDeltaY() * VELOCIDAD_SCROLL;
+                    double cambioVvalue = desplazamiento / maxScroll;
+                    scrollPane.setVvalue(scrollPane.getVvalue() + cambioVvalue);
+                }
+            }
+        });
     }
 
     private void ejecutarBusqueda(String query) {
@@ -318,49 +507,40 @@ public class MainController {
             ScrollPane scroll = new ScrollPane(grid);
             scroll.setFitToWidth(true);
             scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
-            viewContainer.getChildren().setAll(scroll);
+            aplicarScrollRapido(scroll);
 
+            viewContainer.getChildren().setAll(scroll);
             esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
         });
         pause.play();
     }
 
-    /**
-     * MÉTODO CLAVE: Recibe una lista de objetos Image y un Runnable.
-     * Solo ejecuta el Runnable cuando todas las imágenes han completado su carga (o fallado).
-     */
     private void esperarCargaImagenes(List<Image> imagenes, Runnable alTerminar) {
         if (imagenes == null || imagenes.isEmpty()) {
             alTerminar.run();
             return;
         }
 
-        // Contador atómico para saber cuántas faltan
         AtomicInteger pendientes = new AtomicInteger(imagenes.size());
 
         for (Image img : imagenes) {
-            // Si ya cargó (cache) o falló, restamos uno inmediatamente
             if (img.getProgress() == 1.0 || img.isError()) {
                 if (pendientes.decrementAndGet() == 0) {
                     alTerminar.run();
                 }
             } else {
-                // Si está cargando, ponemos un listener
                 img.progressProperty().addListener(new ChangeListener<Number>() {
                     @Override
                     public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
                         if (newValue.doubleValue() == 1.0) {
-                            // Carga completa
                             if (pendientes.decrementAndGet() == 0) {
                                 Platform.runLater(alTerminar);
                             }
-                            // Importante: remover listener para no fugar memoria
                             img.progressProperty().removeListener(this);
                         }
                     }
                 });
 
-                // También escuchamos errores por si la imagen no existe (404)
                 img.errorProperty().addListener((obs, old, isError) -> {
                     if (isError) {
                         if (pendientes.decrementAndGet() == 0) {
@@ -373,6 +553,10 @@ public class MainController {
     }
 
     public void irACapitulos(Manga m) {
+        enVistaExplorar = false;
+        enVistaBiblioteca = false;
+        setBuscadorVisible(false); // OCULTAR BUSCADOR
+
         setCargando(true);
         Task<List<String>> fetchTask = new Task<>() {
             @Override
@@ -396,6 +580,10 @@ public class MainController {
     }
 
     private void abrirCapituloDirecto(Manga m, String nombreCapitulo) {
+        enVistaExplorar = false;
+        enVistaBiblioteca = false;
+        setBuscadorVisible(false); // OCULTAR BUSCADOR
+
         setCargando(true);
         Task<List<String>> task = new Task<>() {
             @Override
@@ -422,7 +610,6 @@ public class MainController {
         new Thread(task).start();
     }
 
-    // MODIFICADO: Ahora acepta la lista de rastreo
     private VBox crearTarjetaManga(Manga m, List<Image> trackerImagenes) {
         VBox card = new VBox(8);
         card.setAlignment(Pos.TOP_CENTER);
@@ -432,10 +619,8 @@ public class MainController {
         iv.setFitWidth(160); iv.setFitHeight(230);
 
         if (m.getUrlPortada() != null) {
-            // true, true, true -> backgroundLoading = true
             Image img = new Image(m.getUrlPortada(), 160, 230, true, true, true);
             iv.setImage(img);
-            // Añadimos la imagen al tracker para esperar por ella
             if (trackerImagenes != null) {
                 trackerImagenes.add(img);
             }
@@ -476,7 +661,6 @@ public class MainController {
         return card;
     }
 
-    // Método de soporte para crear tarjeta SIN tracking (sobrecarga para compatibilidad si fuera necesaria)
     private VBox crearTarjetaManga(Manga m) {
         return crearTarjetaManga(m, null);
     }
@@ -507,7 +691,6 @@ public class MainController {
         guardarBiblioteca();
     }
 
-    // MODIFICADO: Ahora acepta la lista de rastreo
     private VBox crearFilaHorizontal(String titulo, List<Manga> mangas, List<Image> trackerImagenes) {
         VBox row = new VBox(10);
         Label lbl = new Label(titulo.toUpperCase());
@@ -524,7 +707,6 @@ public class MainController {
         return row;
     }
 
-    // Sobrecarga para compatibilidad (por si se usa en otro lado sin tracking)
     private VBox crearFilaHorizontal(String titulo, List<Manga> mangas) {
         return crearFilaHorizontal(titulo, mangas, null);
     }
@@ -538,13 +720,6 @@ public class MainController {
         PauseTransition pause = new PauseTransition(Duration.seconds(2));
         pause.setOnFinished(e -> viewContainer.getChildren().remove(notif));
         pause.play();
-    }
-
-    @FXML private void toggleMenu() {
-        TranslateTransition transition = new TranslateTransition(Duration.millis(300), drawerMenu);
-        transition.setToX(menuVisible ? -MENU_WIDTH : 0);
-        menuVisible = !menuVisible;
-        transition.play();
     }
 
     public MangaService getMangaService() { return mangaService; }
