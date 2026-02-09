@@ -52,7 +52,7 @@ public class LectorController {
     @FXML private Slider sliderTamanoLupa;
     @FXML private Pane lupaOverlay;
     @FXML private Circle lenteLupa;
-    @FXML private Label lblPorcentajeZoom; // NUEVO
+    @FXML private Label lblPorcentajeZoom;
 
     private MainController mainController;
     private List<String> listaNombresCapitulos;
@@ -61,38 +61,40 @@ public class LectorController {
     private String mangaId;
     private volatile boolean cargando = false;
 
+    // CAMBIO: Variable para controlar el modo
+    private boolean isColorMode = false;
+
     // VARIABLES DE MEDIA
     private MediaPlayer mediaPlayer;
     private boolean isPlaying = false;
 
     // VARIABLES DE ZOOM/LUPA
-    private double zoomFactor = 2.0; // 2x por defecto
+    private double zoomFactor = 2.0;
     private final double MAX_ZOOM = 5.0;
     private final double MIN_ZOOM = 1.5;
 
-    // Guarda la posición GLOBAL del ratón en la escena para actualizaciones precisas
     private double lastSceneX = 0;
     private double lastSceneY = 0;
 
     private final double VELOCIDAD_SCROLL_RATON = 4.0;
     private final double PIXELES_POR_TECLA = 150.0;
 
-    public void inicializarLector(List<String> capitulos, int indice, Manga manga, MainController main) {
+    // CAMBIO: Firma actualizada para recibir isColor
+    public void inicializarLector(List<String> capitulos, int indice, Manga manga, MainController main, boolean isColor) {
         this.listaNombresCapitulos = capitulos;
         this.indiceActual = indice;
         this.mangaActual = manga;
         this.mangaId = manga.getTitulo().replace(" ", "_");
         this.mainController = main;
+        this.isColorMode = isColor; // Guardamos el estado
 
         configurarInputUsuario();
         configurarLupa();
         cargarMusicaDisponible();
         cargarCapituloActual();
 
-        actualizarEtiquetaPorcentaje(); // Inicializar etiqueta
+        actualizarEtiquetaPorcentaje();
     }
-
-    // --- LÓGICA DE LUPA CORREGIDA ---
 
     private void configurarLupa() {
         sliderTamanoLupa.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -102,8 +104,6 @@ public class LectorController {
             }
         });
 
-        // Usamos eventos de ratón para guardar la posición en PANTALLA (Scene)
-        // Esto es clave para la precisión.
         scrollLector.setOnMouseMoved(this::guardarPosicionRaton);
         scrollLector.setOnMouseDragged(this::guardarPosicionRaton);
 
@@ -131,51 +131,36 @@ public class LectorController {
         }
     }
 
-    /**
-     * Método centralizado para actualizar la lupa.
-     * Usa lastSceneX y lastSceneY para calcular todo.
-     */
     private void actualizarLupa() {
         try {
-            // 1. Posicionar el círculo visualmente (Overlay)
-            // Convertimos de coordenadas de Escena a coordenadas locales del Overlay
             Point2D localOverlayPoint = lupaOverlay.sceneToLocal(lastSceneX, lastSceneY);
             lenteLupa.setCenterX(localOverlayPoint.getX());
             lenteLupa.setCenterY(localOverlayPoint.getY());
 
-            // 2. Determinar qué parte del contenido capturar (Snapshot)
-            // Convertimos de coordenadas de Escena a coordenadas del VBox de imágenes (contenedorPaginas)
-            // Esto soluciona AUTOMÁTICAMENTE el problema del scroll y desfase.
             Point2D contentPoint = contenedorPaginas.sceneToLocal(lastSceneX, lastSceneY);
 
-            // Si el ratón está fuera del contenido verticalmente (márgenes), salimos
             if (contentPoint.getY() < 0 || contentPoint.getY() > contenedorPaginas.getHeight()) {
                 return;
             }
 
             double radio = lenteLupa.getRadius();
-            // Cuanto mayor el zoom, MENOR el área que capturamos para estirarla
             double anchoCaptura = (radio * 2) / zoomFactor;
             double altoCaptura = (radio * 2) / zoomFactor;
 
-            // Centrar la captura en el punto del ratón relativo al contenido
             double x = contentPoint.getX() - (anchoCaptura / 2);
             double y = contentPoint.getY() - (altoCaptura / 2);
 
-            // Validar que no intentemos capturar dimensiones negativas o cero
             if (anchoCaptura <= 0 || altoCaptura <= 0) return;
 
             SnapshotParameters params = new SnapshotParameters();
-            params.setFill(Color.BLACK); // Relleno negro si nos salimos de la página
+            params.setFill(Color.BLACK);
             params.setViewport(new Rectangle2D(x, y, anchoCaptura, altoCaptura));
 
             WritableImage snapshot = contenedorPaginas.snapshot(params, null);
             lenteLupa.setFill(new ImagePattern(snapshot));
             lupaOverlay.setVisible(true);
 
-        } catch (Exception e) {
-            // Prevenir errores si la transformación falla por algún motivo raro
-        }
+        } catch (Exception e) { }
     }
 
     @FXML
@@ -186,7 +171,6 @@ public class LectorController {
         if (activa) {
             scrollLector.setCursor(Cursor.NONE);
             btnLupa.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand;");
-            // Forzar una actualización inmediata si el ratón ya estaba dentro
             actualizarLupa();
         } else {
             scrollLector.setCursor(Cursor.DEFAULT);
@@ -217,13 +201,6 @@ public class LectorController {
         lblPorcentajeZoom.setText(porcentaje + "%");
     }
 
-    // --- MÚSICA, INPUT Y CARGA (Sin cambios lógicos, solo estructura) ---
-
-    // ... (El resto de métodos: cargarMusicaDisponible, prepararCancion, toggleMusic, detenerMusica
-    //      configurarInputUsuario, cargarCapituloActual, procesarCbz, etc. se mantienen igual
-    //      que en la versión anterior).
-
-    // Solo asegurarnos de que el Scroll también actualice la lupa
     private void configurarInputUsuario() {
         scrollLector.addEventFilter(ScrollEvent.SCROLL, event -> {
             if (event.getDeltaY() != 0) {
@@ -237,8 +214,6 @@ public class LectorController {
                     double cambioVvalue = desplazamiento / maxScroll;
                     scrollLector.setVvalue(scrollLector.getVvalue() + cambioVvalue);
 
-                    // Al hacer scroll, la posición Scene del ratón no cambia, pero el contenido debajo sí.
-                    // Forzamos actualización de la lupa.
                     if (btnLupa.isSelected()) {
                         Platform.runLater(this::actualizarLupa);
                     }
@@ -247,7 +222,6 @@ public class LectorController {
         });
 
         scrollLector.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            // ... (Lógica de teclas igual que antes)
             double contenidoAlto = contenedorPaginas.getBoundsInLocal().getHeight();
             double visorAlto = scrollLector.getViewportBounds().getHeight();
             double maxScroll = contenidoAlto - visorAlto;
@@ -272,8 +246,6 @@ public class LectorController {
 
         scrollLector.setOnMouseClicked(e -> scrollLector.requestFocus());
     }
-
-    // ... (Resto de métodos auxiliares: cargarMusica, cargarCapituloActual, procesarCbz, etc.)
 
     private void cargarMusicaDisponible() {
         MainController.DatosUsuarioManga datos = mainController.getDatosManga(mangaActual.getTitulo());
@@ -336,7 +308,11 @@ public class LectorController {
         if (loadingOverlay != null) loadingOverlay.setVisible(true);
         detenerCarga();
         String nombreArchivo = listaNombresCapitulos.get(indiceActual);
-        lblCapitulo.setText("Leyendo: " + nombreArchivo.replace(".cbz", ""));
+
+        // Indicador visual simple si es color
+        String sufijo = isColorMode ? " (Color)" : "";
+        lblCapitulo.setText("Leyendo: " + nombreArchivo.replace(".cbz", "") + sufijo);
+
         btnAnterior.setDisable(true);
         btnSiguiente.setDisable(true);
         contenedorPaginas.getChildren().clear();
@@ -352,7 +328,8 @@ public class LectorController {
 
         Task<File> downloadTask = new Task<>() {
             @Override protected File call() throws Exception {
-                return mainController.getMangaService().descargarArchivo(mangaId, nombreArchivo);
+                // CAMBIO: Pasamos el flag isColorMode al servicio
+                return mainController.getMangaService().descargarArchivo(mangaId, nombreArchivo, isColorMode);
             }
         };
         downloadTask.setOnSucceeded(e -> {
@@ -430,6 +407,9 @@ public class LectorController {
     @FXML private void cerrarLector() {
         detenerMusica();
         detenerCarga();
+        // Al salir, volvemos a la vista general.
+        // Nota: Por defecto volverá al modo "Original". Si quisieras persistir el modo Color,
+        // tendrías que modificar irACapitulos en MainController, pero para uso básico esto funciona bien.
         mainController.irACapitulos(mangaActual);
     }
 }

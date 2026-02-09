@@ -40,14 +40,10 @@ public class MainController {
 
     @FXML private VBox drawerMenu;
     @FXML private StackPane viewContainer;
-
-    // Elementos para el menú Push y Buscador
     @FXML private AnchorPane mainContent;
     @FXML private HBox searchBoxContainer;
     @FXML private TextField searchBar;
     @FXML private Button btnMenu;
-
-    // Spinner de carga
     @FXML private StackPane loadingOverlay;
     @FXML private ProgressIndicator loadingSpinner;
 
@@ -55,16 +51,11 @@ public class MainController {
     private final double MENU_WIDTH = 280.0;
     private final MangaService mangaService = new MangaService();
     private final File ARCHIVO_BIBLIOTECA = new File(Main.APP_FOLDER, "biblioteca.json");
-
     private List<Manga> listaMaestra = new ArrayList<>();
-
-    // --- VARIABLES DE ESTADO Y FILTROS ---
     private boolean enVistaExplorar = false;
     private boolean enVistaBiblioteca = false;
-
     private String filtroGeneroGuardado = "Todos los Géneros";
     private String filtroEstadoGuardado = "Todos los Estados";
-
     private ComboBox<String> cmbGeneroExplorar;
     private ComboBox<String> cmbEstadoExplorar;
     private FlowPane gridExplorar;
@@ -77,7 +68,6 @@ public class MainController {
     }
 
     private Map<String, DatosUsuarioManga> datosUsuario = new HashMap<>();
-
     private final List<String> GENEROS_POOL = Arrays.asList(
             "Shonen", "Accion", "Aventura", "Comedia", "Drama", "Seinen", "Romance", "Isekai", "Deporte", "Chanbara"
     );
@@ -85,22 +75,16 @@ public class MainController {
     @FXML
     public void initialize() {
         if(loadingOverlay != null) loadingOverlay.setVisible(false);
-
         cargarBiblioteca();
         cargarDatosYMostrarInicio();
 
         if (searchBar != null) {
             searchBar.textProperty().addListener((obs, old, newText) -> {
-                if (enVistaExplorar) {
-                    filtrarExploracion();
-                } else if (enVistaBiblioteca) {
-                    construirVistaBiblioteca();
-                } else {
-                    if (newText == null || newText.trim().isEmpty()) {
-                        abrirInicio();
-                    } else {
-                        ejecutarBusqueda(newText.trim().toLowerCase());
-                    }
+                if (enVistaExplorar) filtrarExploracion();
+                else if (enVistaBiblioteca) construirVistaBiblioteca();
+                else {
+                    if (newText == null || newText.trim().isEmpty()) abrirInicio();
+                    else ejecutarBusqueda(newText.trim().toLowerCase());
                 }
             });
         }
@@ -111,12 +95,9 @@ public class MainController {
     }
 
     private void setBuscadorVisible(boolean visible) {
-        if (searchBoxContainer != null) {
-            searchBoxContainer.setVisible(visible);
-        }
+        if (searchBoxContainer != null) searchBoxContainer.setVisible(visible);
     }
 
-    // --- CARGA DE DATOS ---
     private void cargarBiblioteca() {
         if (ARCHIVO_BIBLIOTECA.exists()) {
             try {
@@ -222,15 +203,10 @@ public class MainController {
         new Thread(task).start();
     }
 
-    // --- NAVEGACIÓN Y VISTAS ---
-
     @FXML
     public void abrirInicio() {
-        enVistaExplorar = false;
-        enVistaBiblioteca = false;
-        setBuscadorVisible(true);
+        enVistaExplorar = false; enVistaBiblioteca = false; setBuscadorVisible(true);
         if (menuVisible) toggleMenu();
-
         setCargando(true);
         PauseTransition pause = new PauseTransition(Duration.millis(50));
         pause.setOnFinished(e -> construirVistaInicio());
@@ -270,11 +246,8 @@ public class MainController {
 
     @FXML
     public void abrirBiblioteca() {
-        enVistaExplorar = false;
-        enVistaBiblioteca = true;
-        setBuscadorVisible(true);
+        enVistaExplorar = false; enVistaBiblioteca = true; setBuscadorVisible(true);
         if (menuVisible) toggleMenu();
-
         setCargando(true);
         PauseTransition pause = new PauseTransition(Duration.millis(50));
         pause.setOnFinished(e -> construirVistaBiblioteca());
@@ -334,11 +307,8 @@ public class MainController {
 
     @FXML
     public void abrirExplorar() {
-        enVistaExplorar = true;
-        enVistaBiblioteca = false;
-        setBuscadorVisible(true);
+        enVistaExplorar = true; enVistaBiblioteca = false; setBuscadorVisible(true);
         if (menuVisible) toggleMenu();
-
         setCargando(true);
         PauseTransition pause = new PauseTransition(Duration.millis(50));
         pause.setOnFinished(e -> construirVistaExplorar());
@@ -349,13 +319,11 @@ public class MainController {
         VBox layoutExplorar = new VBox(20);
         layoutExplorar.setPadding(new Insets(20));
         layoutExplorar.setStyle("-fx-background-color: #141414;");
-
         Label lblTitulo = new Label("Explorar Catálogo");
         lblTitulo.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
 
         HBox filtrosBox = new HBox(15);
         filtrosBox.setAlignment(Pos.CENTER_LEFT);
-
         cmbGeneroExplorar = new ComboBox<>();
         cmbGeneroExplorar.getItems().add("Todos los Géneros");
         cmbGeneroExplorar.getItems().addAll(GENEROS_POOL);
@@ -370,25 +338,17 @@ public class MainController {
         cmbGeneroExplorar.setOnAction(e -> filtrarExploracion());
         cmbEstadoExplorar.setOnAction(e -> filtrarExploracion());
 
-        filtrosBox.getChildren().addAll(
-                new Label("Filtrar por:") {{ setStyle("-fx-text-fill: #bdc3c7;"); }},
-                cmbGeneroExplorar,
-                cmbEstadoExplorar
-        );
-
+        filtrosBox.getChildren().addAll(new Label("Filtrar por:") {{ setStyle("-fx-text-fill: #bdc3c7;"); }}, cmbGeneroExplorar, cmbEstadoExplorar);
         gridExplorar = new FlowPane();
         gridExplorar.setHgap(20); gridExplorar.setVgap(25);
         gridExplorar.setStyle("-fx-background-color: #141414;");
-
         layoutExplorar.getChildren().addAll(lblTitulo, filtrosBox, gridExplorar);
 
         ScrollPane scroll = new ScrollPane(layoutExplorar);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
         aplicarScrollRapido(scroll);
-
         viewContainer.getChildren().setAll(scroll);
-
         filtrarExploracion();
     }
 
@@ -398,29 +358,22 @@ public class MainController {
 
     private void filtrarExploracion() {
         if (!enVistaExplorar || gridExplorar == null) return;
-
         String busquedaTexto = searchBar.getText() != null ? searchBar.getText().toLowerCase().trim() : "";
         String generoSel = cmbGeneroExplorar.getValue();
         String estadoSel = cmbEstadoExplorar.getValue();
-
-        filtroGeneroGuardado = generoSel;
-        filtroEstadoGuardado = estadoSel;
+        filtroGeneroGuardado = generoSel; filtroEstadoGuardado = estadoSel;
 
         List<Image> imagenesPendientes = new ArrayList<>();
         gridExplorar.getChildren().clear();
 
         List<Manga> filtrados = listaMaestra.stream().filter(m -> {
             boolean matchTexto = busquedaTexto.isEmpty() || m.getTitulo().toLowerCase().contains(busquedaTexto);
-            boolean matchGenero = generoSel == null || generoSel.equals("Todos los Géneros") ||
-                    (m.generos != null && m.generos.stream().anyMatch(g -> g.equalsIgnoreCase(generoSel)));
+            boolean matchGenero = generoSel == null || generoSel.equals("Todos los Géneros") || (m.generos != null && m.generos.stream().anyMatch(g -> g.equalsIgnoreCase(generoSel)));
             boolean matchEstado = true;
             if (estadoSel != null && !estadoSel.equals("Todos los Estados")) {
                 String estadoManga = m.estado != null ? m.estado.toLowerCase() : "";
-                if (estadoSel.equals("Finalizado")) {
-                    matchEstado = estadoManga.contains("finalizado") || estadoManga.contains("terminado");
-                } else if (estadoSel.equals("En Curso")) {
-                    matchEstado = !estadoManga.contains("finalizado") && !estadoManga.contains("terminado");
-                }
+                if (estadoSel.equals("Finalizado")) matchEstado = estadoManga.contains("finalizado") || estadoManga.contains("terminado");
+                else if (estadoSel.equals("En Curso")) matchEstado = !estadoManga.contains("finalizado") && !estadoManga.contains("terminado");
             }
             return matchTexto && matchGenero && matchEstado;
         }).collect(Collectors.toList());
@@ -431,47 +384,27 @@ public class MainController {
             gridExplorar.getChildren().add(empty);
             setCargando(false);
         } else {
-            for (Manga m : filtrados) {
-                gridExplorar.getChildren().add(crearTarjetaManga(m, imagenesPendientes));
-            }
+            for (Manga m : filtrados) gridExplorar.getChildren().add(crearTarjetaManga(m, imagenesPendientes));
             if (!imagenesPendientes.isEmpty()) {
                 setCargando(true);
                 esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
-            } else {
-                setCargando(false);
-            }
+            } else setCargando(false);
         }
     }
-
-    // --- LÓGICA DE MENÚ PUSH CORREGIDA ---
 
     @FXML private void toggleMenu() {
         TranslateTransition menuTransition = new TranslateTransition(Duration.millis(300), drawerMenu);
-        // MOVER SOLO EL CONTENEDOR DE VISTAS (NO LA BARRA SUPERIOR)
         TranslateTransition viewTransition = new TranslateTransition(Duration.millis(300), viewContainer);
-
         if (!menuVisible) {
-            // ABRIR: Menú entra (0), Mangas se desplazan (280)
-            menuTransition.setToX(0);
-            viewTransition.setToX(MENU_WIDTH);
-            // El botón de hamburguesa se quedará detrás del menú físicamente
+            menuTransition.setToX(0); viewTransition.setToX(MENU_WIDTH);
         } else {
-            // CERRAR: Menú sale (-280), Mangas vuelven (0)
-            menuTransition.setToX(-MENU_WIDTH);
-            viewTransition.setToX(0);
+            menuTransition.setToX(-MENU_WIDTH); viewTransition.setToX(0);
         }
-
         menuVisible = !menuVisible;
-        menuTransition.play();
-        viewTransition.play();
+        menuTransition.play(); viewTransition.play();
     }
 
-    // Método para detectar clic en el área de mangas y cerrar menú
-    @FXML private void onContentClick() {
-        if (menuVisible) {
-            toggleMenu();
-        }
-    }
+    @FXML private void onContentClick() { if (menuVisible) toggleMenu(); }
 
     private void aplicarScrollRapido(ScrollPane scrollPane) {
         final double VELOCIDAD_SCROLL = 4.0;
@@ -500,15 +433,12 @@ public class MainController {
             grid.setPadding(new Insets(30));
             grid.setStyle("-fx-background-color: #141414;");
             for (Manga m : listaMaestra) {
-                if (m.getTitulo().toLowerCase().contains(query)) {
-                    grid.getChildren().add(crearTarjetaManga(m, imagenesPendientes));
-                }
+                if (m.getTitulo().toLowerCase().contains(query)) grid.getChildren().add(crearTarjetaManga(m, imagenesPendientes));
             }
             ScrollPane scroll = new ScrollPane(grid);
             scroll.setFitToWidth(true);
             scroll.setStyle("-fx-background: #141414; -fx-background-color: #141414;");
             aplicarScrollRapido(scroll);
-
             viewContainer.getChildren().setAll(scroll);
             esperarCargaImagenes(imagenesPendientes, () -> setCargando(false));
         });
@@ -516,52 +446,36 @@ public class MainController {
     }
 
     private void esperarCargaImagenes(List<Image> imagenes, Runnable alTerminar) {
-        if (imagenes == null || imagenes.isEmpty()) {
-            alTerminar.run();
-            return;
-        }
-
+        if (imagenes == null || imagenes.isEmpty()) { alTerminar.run(); return; }
         AtomicInteger pendientes = new AtomicInteger(imagenes.size());
-
         for (Image img : imagenes) {
             if (img.getProgress() == 1.0 || img.isError()) {
-                if (pendientes.decrementAndGet() == 0) {
-                    alTerminar.run();
-                }
+                if (pendientes.decrementAndGet() == 0) alTerminar.run();
             } else {
                 img.progressProperty().addListener(new ChangeListener<Number>() {
                     @Override
                     public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
                         if (newValue.doubleValue() == 1.0) {
-                            if (pendientes.decrementAndGet() == 0) {
-                                Platform.runLater(alTerminar);
-                            }
+                            if (pendientes.decrementAndGet() == 0) Platform.runLater(alTerminar);
                             img.progressProperty().removeListener(this);
                         }
                     }
                 });
-
                 img.errorProperty().addListener((obs, old, isError) -> {
-                    if (isError) {
-                        if (pendientes.decrementAndGet() == 0) {
-                            Platform.runLater(alTerminar);
-                        }
-                    }
+                    if (isError && pendientes.decrementAndGet() == 0) Platform.runLater(alTerminar);
                 });
             }
         }
     }
 
     public void irACapitulos(Manga m) {
-        enVistaExplorar = false;
-        enVistaBiblioteca = false;
-        setBuscadorVisible(false); // OCULTAR BUSCADOR
-
+        enVistaExplorar = false; enVistaBiblioteca = false; setBuscadorVisible(false);
         setCargando(true);
         Task<List<String>> fetchTask = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
-                return mangaService.obtenerCapitulos(m.getTitulo(), m);
+                // CAMBIO: Por defecto, desde el menú, vamos al modo Normal (false)
+                return mangaService.obtenerCapitulos(m.getTitulo(), m, false);
             }
         };
         fetchTask.setOnSucceeded(evt -> {
@@ -580,14 +494,14 @@ public class MainController {
     }
 
     private void abrirCapituloDirecto(Manga m, String nombreCapitulo) {
-        enVistaExplorar = false;
-        enVistaBiblioteca = false;
-        setBuscadorVisible(false); // OCULTAR BUSCADOR
-
+        enVistaExplorar = false; enVistaBiblioteca = false; setBuscadorVisible(false);
         setCargando(true);
         Task<List<String>> task = new Task<>() {
             @Override
-            protected List<String> call() throws Exception { return mangaService.obtenerCapitulos(m.getTitulo(), m); }
+            protected List<String> call() throws Exception {
+                // CAMBIO: Asumimos modo normal para continuación rápida
+                return mangaService.obtenerCapitulos(m.getTitulo(), m, false);
+            }
         };
         task.setOnSucceeded(e -> {
             try {
@@ -600,7 +514,8 @@ public class MainController {
                     Node lectorNode = loader.load();
                     LectorController controller = loader.getController();
                     setCurrentController(controller);
-                    controller.inicializarLector(listaNormalizada, index, m, this);
+                    // CAMBIO: Iniciamos el lector en modo normal (false)
+                    controller.inicializarLector(listaNormalizada, index, m, this, false);
                     viewContainer.getChildren().setAll(lectorNode);
                 } else { irACapitulos(m); }
             } catch (Exception ex) { ex.printStackTrace(); }
@@ -611,32 +526,21 @@ public class MainController {
     }
 
     private VBox crearTarjetaManga(Manga m, List<Image> trackerImagenes) {
-        VBox card = new VBox(8);
-        card.setAlignment(Pos.TOP_CENTER);
-        StackPane imageContainer = new StackPane();
-        imageContainer.setPrefSize(160, 230);
-        ImageView iv = new ImageView();
-        iv.setFitWidth(160); iv.setFitHeight(230);
-
+        VBox card = new VBox(8); card.setAlignment(Pos.TOP_CENTER);
+        StackPane imageContainer = new StackPane(); imageContainer.setPrefSize(160, 230);
+        ImageView iv = new ImageView(); iv.setFitWidth(160); iv.setFitHeight(230);
         if (m.getUrlPortada() != null) {
             Image img = new Image(m.getUrlPortada(), 160, 230, true, true, true);
             iv.setImage(img);
-            if (trackerImagenes != null) {
-                trackerImagenes.add(img);
-            }
+            if (trackerImagenes != null) trackerImagenes.add(img);
         }
-
-        Rectangle clip = new Rectangle(160, 230);
-        clip.setArcWidth(15); clip.setArcHeight(15);
-        iv.setClip(clip);
-        iv.setCursor(Cursor.HAND);
-        iv.setOnMouseClicked(e -> irACapitulos(m));
+        Rectangle clip = new Rectangle(160, 230); clip.setArcWidth(15); clip.setArcHeight(15); iv.setClip(clip);
+        iv.setCursor(Cursor.HAND); iv.setOnMouseClicked(e -> irACapitulos(m));
         Button btnAdd = new Button();
         DatosUsuarioManga datos = datosUsuario.get(m.getTitulo());
         boolean enBiblio = datos != null && datos.enBiblioteca;
         configurarEstiloBotonBiblio(btnAdd, enBiblio);
-        StackPane.setAlignment(btnAdd, Pos.TOP_RIGHT);
-        StackPane.setMargin(btnAdd, new Insets(5));
+        StackPane.setAlignment(btnAdd, Pos.TOP_RIGHT); StackPane.setMargin(btnAdd, new Insets(5));
         btnAdd.setOnAction(e -> { toggleBiblioteca(m, btnAdd); e.consume(); });
         imageContainer.getChildren().addAll(iv, btnAdd);
         if (datos != null && datos.siguienteCapitulo != null) {
@@ -646,43 +550,28 @@ public class MainController {
             lblNext.setOnMouseEntered(e -> lblNext.setStyle("-fx-background-color: #e50914; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: #e50914; -fx-border-radius: 4; -fx-border-width: 1;"));
             lblNext.setOnMouseExited(e -> lblNext.setStyle("-fx-background-color: rgba(50, 50, 50, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: #777; -fx-border-radius: 4; -fx-border-width: 1;"));
             lblNext.setOnMouseClicked(e -> { abrirCapituloDirecto(m, datos.siguienteCapitulo); e.consume(); });
-            StackPane.setAlignment(lblNext, Pos.TOP_LEFT);
-            StackPane.setMargin(lblNext, new Insets(6));
+            StackPane.setAlignment(lblNext, Pos.TOP_LEFT); StackPane.setMargin(lblNext, new Insets(6));
             imageContainer.getChildren().add(lblNext);
         }
         Label lbl = new Label(m.getTitulo());
         lbl.setStyle("-fx-text-fill: #bdc3c7; -fx-font-size: 13px; -fx-font-weight: bold;");
         lbl.setMaxWidth(150); lbl.setAlignment(Pos.CENTER);
-        lbl.setCursor(Cursor.HAND);
-        lbl.setOnMouseClicked(e -> irACapitulos(m));
+        lbl.setCursor(Cursor.HAND); lbl.setOnMouseClicked(e -> irACapitulos(m));
         card.getChildren().addAll(imageContainer, lbl);
         card.setOnMouseEntered(e -> card.setScaleX(1.05));
         card.setOnMouseExited(e -> card.setScaleX(1.0));
         return card;
     }
 
-    private VBox crearTarjetaManga(Manga m) {
-        return crearTarjetaManga(m, null);
-    }
-
+    private VBox crearTarjetaManga(Manga m) { return crearTarjetaManga(m, null); }
     private String extraerNumeroCapitulo(String nombreArchivo) {
-        try {
-            Matcher m = Pattern.compile("(\\d+)").matcher(nombreArchivo);
-            if (m.find()) return "Cap. " + Integer.parseInt(m.group(1));
-        } catch (Exception e) {}
+        try { Matcher m = Pattern.compile("(\\d+)").matcher(nombreArchivo); if (m.find()) return "Cap. " + Integer.parseInt(m.group(1)); } catch (Exception e) {}
         return "Leer";
     }
-
     private void configurarEstiloBotonBiblio(Button btn, boolean added) {
-        if (added) {
-            btn.setText("✔");
-            btn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
-        } else {
-            btn.setText("+");
-            btn.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;");
-        }
+        if (added) { btn.setText("✔"); btn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;"); }
+        else { btn.setText("+"); btn.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px; -fx-background-radius: 50; -fx-min-width: 30; -fx-min-height: 30; -fx-cursor: hand;"); }
     }
-
     private void toggleBiblioteca(Manga m, Button btn) {
         DatosUsuarioManga datos = datosUsuario.computeIfAbsent(m.getTitulo(), k -> new DatosUsuarioManga());
         datos.enBiblioteca = !datos.enBiblioteca;
@@ -690,32 +579,23 @@ public class MainController {
         mostrarNotificacion(datos.enBiblioteca ? "¡Añadido a tu biblioteca!" : "Eliminado de biblioteca");
         guardarBiblioteca();
     }
-
     private VBox crearFilaHorizontal(String titulo, List<Manga> mangas, List<Image> trackerImagenes) {
         VBox row = new VBox(10);
         Label lbl = new Label(titulo.toUpperCase());
         lbl.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 0 0 0 25;");
-        HBox hb = new HBox(20);
-        hb.setPadding(new Insets(10, 25, 10, 25));
-        for (Manga m : mangas) {
-            hb.getChildren().add(crearTarjetaManga(m, trackerImagenes));
-        }
+        HBox hb = new HBox(20); hb.setPadding(new Insets(10, 25, 10, 25));
+        for (Manga m : mangas) hb.getChildren().add(crearTarjetaManga(m, trackerImagenes));
         ScrollPane sp = new ScrollPane(hb);
         sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         sp.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;");
         row.getChildren().addAll(lbl, sp);
         return row;
     }
-
-    private VBox crearFilaHorizontal(String titulo, List<Manga> mangas) {
-        return crearFilaHorizontal(titulo, mangas, null);
-    }
-
+    private VBox crearFilaHorizontal(String titulo, List<Manga> mangas) { return crearFilaHorizontal(titulo, mangas, null); }
     private void mostrarNotificacion(String mensaje) {
         Label notif = new Label(mensaje);
         notif.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 20;");
-        StackPane.setAlignment(notif, Pos.BOTTOM_CENTER);
-        StackPane.setMargin(notif, new Insets(0, 0, 50, 0));
+        StackPane.setAlignment(notif, Pos.BOTTOM_CENTER); StackPane.setMargin(notif, new Insets(0, 0, 50, 0));
         viewContainer.getChildren().add(notif);
         PauseTransition pause = new PauseTransition(Duration.seconds(2));
         pause.setOnFinished(e -> viewContainer.getChildren().remove(notif));
@@ -726,25 +606,14 @@ public class MainController {
     public StackPane getViewContainer() { return viewContainer; }
     public void setCurrentController(Object controller) { }
 
-    @FXML
-    private void borrarDatos() {
+    @FXML private void borrarDatos() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Borrar todos los datos");
-        alert.setHeaderText("¿Estás seguro de que quieres reiniciar?");
-        alert.setContentText("Esta acción es irreversible:\n\n" +
-                "• Se borrará tu biblioteca personal.\n" +
-                "• Se eliminarán todos los capítulos descargados.\n" +
-                "• Se eliminará la caché de listas.\n" +
-                "• Se eliminará toda la música personalizada.\n\n" +
-                "El programa quedará como recién instalado.");
-
+        alert.setTitle("Borrar todos los datos"); alert.setHeaderText("¿Estás seguro de que quieres reiniciar?");
+        alert.setContentText("Esta acción es irreversible y borrará biblioteca, descargas y música.");
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #000000; -fx-border-color: #e50914;");
         dialogPane.getScene().getStylesheets().add(getClass().getResource(Utils.RESOURCES_PATH + "estilos-lista.css").toExternalForm());
-        alert.getDialogPane().lookupAll(".label").forEach(node -> {
-            if (node instanceof Label) ((Label) node).setStyle("-fx-text-fill: white;");
-        });
-
+        alert.getDialogPane().lookupAll(".label").forEach(node -> { if (node instanceof Label) ((Label) node).setStyle("-fx-text-fill: white;"); });
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) realizarBorradoCompleto();
     }
@@ -755,19 +624,19 @@ public class MainController {
             File carpetaCapitulos = new File(Main.CAPITULOS_FOLDER);
             File carpetaListas = new File(Main.LISTADO_FOLDER);
             File carpetaMusica = new File(Main.MUSICA_FOLDER);
+            // CAMBIO: Borramos también la carpeta de color
+            File carpetaColor = new File(Main.CAPITULOS_COLOR_FOLDER);
+
             borrarDirectorioRecursivo(carpetaCapitulos);
             borrarDirectorioRecursivo(carpetaListas);
             borrarDirectorioRecursivo(carpetaMusica);
+            borrarDirectorioRecursivo(carpetaColor);
+
             datosUsuario.clear();
-            carpetaCapitulos.mkdirs();
-            carpetaListas.mkdirs();
-            carpetaMusica.mkdirs();
+            carpetaCapitulos.mkdirs(); carpetaListas.mkdirs(); carpetaMusica.mkdirs(); carpetaColor.mkdirs();
             mostrarNotificacion("Sistema restaurado correctamente.");
             abrirInicio();
-        } catch (IOException e) {
-            e.printStackTrace();
-            mostrarNotificacion("Error al borrar algunos archivos.");
-        }
+        } catch (IOException e) { e.printStackTrace(); mostrarNotificacion("Error al borrar algunos archivos."); }
     }
 
     private void borrarDirectorioRecursivo(File archivo) {

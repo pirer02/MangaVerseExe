@@ -21,14 +21,10 @@ public class MangaService {
     private String IP_LOCAL = "ipoculto/";
     private String IP_PUBLICA = "http://95.61.154.61:5000/";
 
-    // CAMBIO 1: Usamos un directorio en lugar de un solo archivo
     private final File CACHE_DIR = new File(Main.LISTADO_FOLDER, "cache_capitulos");
-
-    // Cache temporal en memoria para lista de mangas
     private List<Manga> cacheMangasMemoria = new ArrayList<>();
 
     public MangaService() {
-        // Aseguramos que la carpeta de caché exista al iniciar el servicio
         if (!CACHE_DIR.exists()) {
             CACHE_DIR.mkdirs();
         }
@@ -57,7 +53,6 @@ public class MangaService {
         return IP_PUBLICA;
     }
 
-    // ... (El método obtenerMangasPorGenero se mantiene igual) ...
     public List<Manga> obtenerMangasPorGenero(String genero) {
         if (cacheMangasMemoria.isEmpty()) {
             obtenerMangasDesdeServidor();
@@ -67,7 +62,6 @@ public class MangaService {
         return filtrados.stream().limit(10).collect(Collectors.toList());
     }
 
-    // ... (El método obtenerMangasDesdeServidor se mantiene igual) ...
     public List<Manga> obtenerMangasDesdeServidor() {
         List<Manga> lista = new ArrayList<>();
         String urlFinal = getBaseUrl();
@@ -100,27 +94,56 @@ public class MangaService {
     }
 
     /**
-     * CAMBIO 2: Método obtenerCapitulos con lógica de expiración
-     * @param mangaNombre El nombre del manga
+     * CAMBIO: Nuevo método para verificar si existe versión a color.
+     * Intenta listar los archivos en la subcarpeta /color/.
      */
-    public List<String> obtenerCapitulos(String mangaNombre, Manga manga) {
+    public boolean verificarExistenciaColor(String mangaNombre) {
         String mangaId = mangaNombre.replace(" ", "_");
-        File mangaCacheFile = new File(CACHE_DIR, mangaId + ".json");
+        String urlFinal = getBaseUrl() + "mangas/" + mangaId + "/color/capitulos";
 
-        // Verificamos si podemos usar la caché
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(2)).build();
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlFinal)).GET().build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Si el servidor devuelve 200 y una lista no vacía, existe la carpeta color
+            if (response.statusCode() == 200) {
+                JSONArray array = new JSONArray(response.body());
+                return array.length() > 0;
+            }
+        } catch (Exception e) {
+            // Si da error (404, etc), asumimos que no hay color
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * CAMBIO: Ahora acepta boolean isColor
+     */
+    public List<String> obtenerCapitulos(String mangaNombre, Manga manga, boolean isColor) {
+        String mangaId = mangaNombre.replace(" ", "_");
+        // Usamos un sufijo en el archivo de caché para diferenciar normal de color
+        String sufijoCache = isColor ? "_color.json" : ".json";
+        File mangaCacheFile = new File(CACHE_DIR, mangaId + sufijoCache);
+
         if (debeUsarCache(mangaCacheFile, manga.getEstado())) {
-            System.out.println("Usando caché para: " + mangaNombre);
+            System.out.println("Usando caché " + (isColor ? "(Color)" : "(Normal)") + " para: " + mangaNombre);
             return leerCacheIndividual(mangaCacheFile);
         }
 
-        System.out.println("Descargando lista fresca para: " + mangaNombre);
+        System.out.println("Descargando lista fresca " + (isColor ? "(Color)" : "(Normal)") + " para: " + mangaNombre);
         List<String> caps = new ArrayList<>();
         String urlFinal = getBaseUrl();
 
         try {
             HttpClient client = HttpClient.newHttpClient();
+            // Construimos la URL: si es color, añadimos /color/ a la ruta
+            String rutaEndpoint = isColor ? "/mangas/" + mangaId + "/color/capitulos"
+                    : "/mangas/" + mangaId + "/capitulos";
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlFinal + "mangas/" + mangaId + "/capitulos"))
+                    .uri(URI.create(urlFinal + rutaEndpoint))
                     .GET().build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -129,11 +152,9 @@ public class MangaService {
                 for (int i = 0; i < array.length(); i++) {
                     caps.add(array.getString(i));
                 }
-                // Guardamos en archivo individual
                 guardarEnCacheIndividual(mangaCacheFile, caps);
             }
         } catch (Exception e) {
-            // Fallback: Si falla la red, intentamos devolver caché aunque sea vieja
             if (mangaCacheFile.exists()) {
                 return leerCacheIndividual(mangaCacheFile);
             }
@@ -142,35 +163,39 @@ public class MangaService {
         return caps;
     }
 
-    // CAMBIO 3: Lógica de decisión de caché (La "Condición")
     private boolean debeUsarCache(File archivo, String estado) {
-        // 1. Si no existe el archivo, no hay caché que valga
         if (!archivo.exists()) return false;
-
-        // 2. Si el estado es FINALIZADO, la caché es válida para siempre
         if (estado != null && estado.toUpperCase().contains("FINALIZADO")) {
             return true;
         }
-
-        // 3. Si está en emisión (o estado desconocido), usamos TTL de 24 horas
-        long ttlMillis = 24 * 60 * 60 * 1000; // 24 horas
+        long ttlMillis = 24 * 60 * 60 * 1000;
         long diferencia = System.currentTimeMillis() - archivo.lastModified();
-
-        // Si la diferencia es menor al TTL, la caché es válida. Si es mayor, devolvemos false (refrescar).
         return diferencia < ttlMillis;
     }
 
-
-    // ... (El método descargarArchivo se mantiene igual) ...
-    public File descargarArchivo(String mangaNombre, String nombreCapitulo) throws Exception {
+    /**
+     * CAMBIO: Ahora acepta boolean isColor para saber dónde descargar y qué URL usar
+     */
+    public File descargarArchivo(String mangaNombre, String nombreCapitulo, boolean isColor) throws Exception {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl();
-        File destination = new File(Main.CAPITULOS_FOLDER, nombreCapitulo);
+
+        // Decidimos la carpeta de destino (Normal o Color)
+        File carpetaDestino = isColor ? new File(Main.CAPITULOS_COLOR_FOLDER) : new File(Main.CAPITULOS_FOLDER);
+        File destination = new File(carpetaDestino, nombreCapitulo);
 
         if (destination.exists()) return destination;
 
         String nombreCapEncoded = nombreCapitulo.replace(" ", "%20");
-        String urlDescarga = urlFinal + "download/" + mangaId + "/" + nombreCapEncoded;
+
+        // Construimos la URL de descarga.
+        // Asumiendo estructura: /download/MangaID/Capitulo  O  /download/MangaID/color/Capitulo
+        String urlDescarga;
+        if (isColor) {
+            urlDescarga = urlFinal + "download/" + mangaId + "/color/" + nombreCapEncoded;
+        } else {
+            urlDescarga = urlFinal + "download/" + mangaId + "/" + nombreCapEncoded;
+        }
 
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
@@ -184,7 +209,6 @@ public class MangaService {
         else throw new IOException("Error en servidor: " + response.statusCode());
     }
 
-    // ... (El método obtenerInfoManga se mantiene igual) ...
     public Manga obtenerInfoManga(String mangaNombre) {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl() + "mangas/" + mangaId + "/info";
@@ -216,13 +240,9 @@ public class MangaService {
         return new Manga(mangaNombre, null, null, "Sin descripción", new ArrayList<>(), "", "");
     }
 
-    // --- NUEVOS MÉTODOS DE CACHÉ INDIVIDUAL ---
-
     private void guardarEnCacheIndividual(File archivo, List<String> capitulos) {
         try {
-            // Creamos un JSON simple con la lista
             JSONArray jsonArray = new JSONArray(capitulos);
-            // Sobreescribimos el archivo. Al escribir, se actualiza automáticamente el 'lastModified'
             Files.writeString(archivo.toPath(), jsonArray.toString());
         } catch (Exception e) {
             e.printStackTrace();

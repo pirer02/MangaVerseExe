@@ -4,6 +4,7 @@ import com.zixion.mangaverse.Main;
 import com.zixion.mangaverse.Utils;
 import com.zixion.mangaverse.models.Manga;
 import com.zixion.mangaverse.models.Musica;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -43,13 +44,17 @@ public class CapitulosController {
     @FXML private FlowPane contenedorGeneros;
     @FXML private TextField txtBusqueda;
     @FXML private Label lblTotalCapitulos;
-
-    // NUEVO: Control del Overlay
     @FXML private StackPane loadingOverlay;
+
+    // CAMBIO: Nuevo botón para alternar modo color
+    @FXML private Button btnModoColor;
 
     private MainController mainController;
     private List<String> todosLosCapitulos = new ArrayList<>();
     private Manga mangaActual;
+
+    // CAMBIO: Estado para saber si estamos viendo color o normal
+    private boolean modoColor = false;
 
     @FXML
     public void initialize() {
@@ -61,23 +66,23 @@ public class CapitulosController {
         clip.widthProperty().bind(contenedorPrincipal.widthProperty());
         clip.heightProperty().bind(contenedorPrincipal.heightProperty());
         contenedorPrincipal.setClip(clip);
+
+        // Inicialmente ocultamos el botón hasta verificar si hay color
+        if(btnModoColor != null) {
+            btnModoColor.setVisible(false);
+            btnModoColor.setManaged(false);
+        }
     }
 
     public void setDatos(String titulo, List<String> capitulos, MainController main, Manga manga) {
         this.mainController = main;
         this.mangaActual = manga;
         lblTitulo.setText(titulo);
+        this.modoColor = false; // Resetear al entrar
 
-        // Activamos la carga al iniciar la vista
         if (loadingOverlay != null) loadingOverlay.setVisible(true);
 
-        todosLosCapitulos.clear();
-        for (String cap : capitulos) {
-            todosLosCapitulos.add(cap.replace(".cbz", ""));
-        }
-
-        listaCapitulos.getItems().setAll(todosLosCapitulos);
-        lblTotalCapitulos.setText(String.valueOf(todosLosCapitulos.size()));
+        actualizarListaInterna(capitulos);
 
         txtBusqueda.textProperty().addListener((observable, oldValue, newValue) -> {
             filtrarCapitulos(newValue);
@@ -87,8 +92,10 @@ public class CapitulosController {
         portadaImg.setImage(imagen);
         bgImage.setImage(imagen);
 
-        // Cargamos la info asíncrona
         cargarInfoExtra();
+
+        // CAMBIO: Verificar existencia de versión a color en hilo separado
+        verificarOpcionColor();
 
         listaCapitulos.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -101,8 +108,78 @@ public class CapitulosController {
         configurarDisenoLista();
     }
 
+    private void actualizarListaInterna(List<String> capitulos) {
+        todosLosCapitulos.clear();
+        for (String cap : capitulos) {
+            todosLosCapitulos.add(cap.replace(".cbz", ""));
+        }
+        listaCapitulos.getItems().setAll(todosLosCapitulos);
+        lblTotalCapitulos.setText(String.valueOf(todosLosCapitulos.size()));
+    }
+
+    // CAMBIO: Nuevo método para chequear disponibilidad de color
+    private void verificarOpcionColor() {
+        Task<Boolean> checkTask = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                return mainController.getMangaService().verificarExistenciaColor(mangaActual.getTitulo());
+            }
+        };
+
+        checkTask.setOnSucceeded(e -> {
+            boolean existeColor = checkTask.getValue();
+            if (existeColor && btnModoColor != null) {
+                btnModoColor.setVisible(true);
+                btnModoColor.setManaged(true);
+                btnModoColor.setText("Ver a Color 🎨");
+                btnModoColor.setStyle("-fx-background-color: linear-gradient(to right, #8e44ad, #c0392b); -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;");
+            }
+        });
+
+        new Thread(checkTask).start();
+    }
+
+    // CAMBIO: Acción del botón
+    @FXML
+    private void toggleColorMode() {
+        loadingOverlay.setVisible(true);
+        modoColor = !modoColor; // Alternar estado
+
+        // Actualizar apariencia del botón
+        if (modoColor) {
+            btnModoColor.setText("Ver Original 📄");
+            btnModoColor.setStyle("-fx-background-color: #555; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;");
+        } else {
+            btnModoColor.setText("Ver a Color 🎨");
+            btnModoColor.setStyle("-fx-background-color: linear-gradient(to right, #8e44ad, #c0392b); -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;");
+        }
+
+        // Recargar capítulos con el nuevo modo
+        Task<List<String>> reloadTask = new Task<>() {
+            @Override
+            protected List<String> call() throws Exception {
+                // Pasamos el flag modoColor al servicio
+                return mainController.getMangaService().obtenerCapitulos(mangaActual.getTitulo(), mangaActual, modoColor);
+            }
+        };
+
+        reloadTask.setOnSucceeded(e -> {
+            actualizarListaInterna(reloadTask.getValue());
+            loadingOverlay.setVisible(false);
+        });
+
+        reloadTask.setOnFailed(e -> {
+            loadingOverlay.setVisible(false);
+            e.getSource().getException().printStackTrace();
+        });
+
+        new Thread(reloadTask).start();
+    }
+
     @FXML
     private void gestionarMusica() {
+        // ... (El código de música se mantiene IDÉNTICO, lo omito para ahorrar espacio, cópialo de tu versión anterior) ...
+        // Simplemente asegúrate de mantener el método tal cual estaba.
         MainController.DatosUsuarioManga datos = mainController.getDatosManga(mangaActual.getTitulo());
         if (datos == null) {
             mainController.registrarLectura(mangaActual.getTitulo(), "INIT", null);
@@ -206,6 +283,7 @@ public class CapitulosController {
         dialog.showAndWait();
     }
 
+    // Método auxiliar (mismo que tenías)
     private void mostrarAlertaNegra(String titulo, String mensaje) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(titulo);
@@ -231,7 +309,10 @@ public class CapitulosController {
             }
             mainController.registrarLectura(mangaActual.getTitulo(), nombreCapituloSeleccionado, siguienteCapitulo);
             listaCapitulos.refresh();
-            controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController);
+
+            // CAMBIO: Pasamos el flag modoColor al inicializador
+            controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController, modoColor);
+
             mainController.getViewContainer().getChildren().setAll(lectorNode);
         } catch (IOException e) {
             e.printStackTrace();
@@ -261,7 +342,6 @@ public class CapitulosController {
             }
         };
 
-        // Cuando termine (éxito), actualizamos la UI y quitamos el spinner
         task.setOnSucceeded(e -> {
             Manga info = task.getValue();
             if (info != null) {
@@ -287,7 +367,6 @@ public class CapitulosController {
             if(loadingOverlay != null) loadingOverlay.setVisible(false);
         });
 
-        // Si falla, también quitamos el spinner para no bloquear la app
         task.setOnFailed(e -> {
             if(loadingOverlay != null) loadingOverlay.setVisible(false);
             e.getSource().getException().printStackTrace();
@@ -297,6 +376,7 @@ public class CapitulosController {
     }
 
     private void configurarDisenoLista() {
+        // ... (El código de la celda de lista se mantiene igual, lo omito por espacio. Pégalo aquí) ...
         listaCapitulos.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {

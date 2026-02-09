@@ -91,8 +91,12 @@
             </HBox>
             <Region HBox.hgrow="ALWAYS" />
 
-            <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="300.0" prefWidth="300.0"
+            <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="450.0" prefWidth="450.0"
                   style="-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 10; -fx-padding: 8 12; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;">
+
+                <Button fx:id="btnModoColor" text="Ver a Color" onAction="#toggleColorMode"
+                        visible="false" managed="false"
+                        style="-fx-background-color: linear-gradient(to right, #8e44ad, #c0392b); -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;" />
 
                 <Button text="♫" onAction="#gestionarMusica"
                         style="-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-font-size: 14; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 10;"/>
