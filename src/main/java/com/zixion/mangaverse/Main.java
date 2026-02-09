@@ -15,10 +15,13 @@ public class Main extends Application {
     public static final String APP_FOLDER = System.getProperty("user.home") + File.separator + ".mangaverse";
     public static final String CAPITULOS_FOLDER = APP_FOLDER + File.separator + "capitulos-cache";
     public static final String LISTADO_FOLDER = APP_FOLDER + File.separator + "listado-capitulos-cache";
+    // CAMBIO: Nueva carpeta para música
+    public static final String MUSICA_FOLDER = APP_FOLDER + File.separator + "musica-custom";
 
     @Override
     public void start(Stage stage) throws IOException {
-        String[] folders = {APP_FOLDER, CAPITULOS_FOLDER, LISTADO_FOLDER};
+        // CAMBIO: Añadimos MUSICA_FOLDER al array para que se cree al iniciar
+        String[] folders = {APP_FOLDER, CAPITULOS_FOLDER, LISTADO_FOLDER, MUSICA_FOLDER};
         for (String path : folders) {
             File dir = new File(path);
             if (!dir.exists()) {

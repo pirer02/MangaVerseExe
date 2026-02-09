@@ -90,11 +90,17 @@
                 <Label fx:id="lblTotalCapitulos" text="0" style="-fx-text-fill: #e50914; -fx-font-weight: bold; -fx-font-size: 15px;" />
             </HBox>
             <Region HBox.hgrow="ALWAYS" />
-            <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="250.0" prefWidth="250.0"
+
+            <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="300.0" prefWidth="300.0"
                   style="-fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 10; -fx-padding: 8 12; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 10;">
+
+                <Button text="♫" onAction="#gestionarMusica"
+                        style="-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-font-size: 14; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 10;"/>
+
                 <Label text="🔍" style="-fx-text-fill: #aaa;" />
                 <TextField fx:id="txtBusqueda" promptText="Buscar..."
-                           style="-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 13px;" HBox.hgrow="ALWAYS" />
+                           style="-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 13px;"
+                           HBox.hgrow="ALWAYS" />
             </HBox>
         </HBox>
 

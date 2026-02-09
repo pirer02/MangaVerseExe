@@ -1,17 +1,16 @@
 package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.Main;
 import com.zixion.mangaverse.Utils;
 import com.zixion.mangaverse.models.Manga;
+import com.zixion.mangaverse.models.Musica;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
@@ -19,12 +18,18 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class CapitulosController {
     @FXML private StackPane contenedorPrincipal;
@@ -45,12 +50,10 @@ public class CapitulosController {
 
     @FXML
     public void initialize() {
-        // Fondo Responsive
         bgImage.setManaged(false);
         bgImage.fitWidthProperty().bind(contenedorPrincipal.widthProperty());
         bgImage.fitHeightProperty().bind(contenedorPrincipal.heightProperty());
 
-        // Clipping para que no se salga de la ventana
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(contenedorPrincipal.widthProperty());
         clip.heightProperty().bind(contenedorPrincipal.heightProperty());
@@ -90,30 +93,141 @@ public class CapitulosController {
         configurarDisenoLista();
     }
 
+    @FXML
+    private void gestionarMusica() {
+        MainController.DatosUsuarioManga datos = mainController.getDatosManga(mangaActual.getTitulo());
+        if (datos == null) {
+            mainController.registrarLectura(mangaActual.getTitulo(), "INIT", null);
+            datos = mainController.getDatosManga(mangaActual.getTitulo());
+            datos.capitulosLeidos.remove("INIT");
+        }
+
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Ambiente Musical - " + mangaActual.getTitulo());
+        dialog.setHeaderText("Añade música temática para leer este manga.\n(Máx. 12 canciones - Archivos MP3)");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        // CAMBIO: Fondo negro puro para mejor lectura
+        dialogPane.setStyle("-fx-background-color: #000000; -fx-border-color: #e50914; -fx-border-width: 1;");
+        dialogPane.getStylesheets().add(Objects.requireNonNull(getClass().getResource(Utils.RESOURCES_PATH + "estilos-lista.css")).toExternalForm());
+
+        // Asegurar que todos los labels sean blancos sobre el fondo negro
+        dialogPane.lookupAll(".label").forEach(node -> node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;"));
+
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20));
+
+        ListView<Musica> listaCanciones = new ListView<>();
+        listaCanciones.getItems().setAll(datos.canciones);
+        listaCanciones.setPrefHeight(150);
+        // Estilo oscuro para la lista interna
+        listaCanciones.setStyle("-fx-control-inner-background: #1a1a1a; -fx-background-color: #1a1a1a;");
+
+        Button btnAdd = new Button("Añadir MP3 (+)");
+        Button btnDel = new Button("Eliminar Seleccionada");
+
+        btnAdd.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+        btnDel.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+
+        final MainController.DatosUsuarioManga finalDatos = datos;
+        btnAdd.setOnAction(e -> {
+            if (finalDatos.canciones.size() >= 12) {
+                mostrarAlertaNegra("Límite alcanzado", "Has alcanzado el límite de 12 canciones.");
+                return;
+            }
+
+            TextInputDialog nameDialog = new TextInputDialog();
+            nameDialog.setTitle("Nueva Canción");
+            nameDialog.setHeaderText("Introduce el nombre de la canción:");
+
+            // CAMBIO: Fondo negro también para el diálogo de texto
+            nameDialog.getDialogPane().setStyle("-fx-background-color: #000000; -fx-border-color: #e50914;");
+            nameDialog.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+
+            nameDialog.showAndWait().ifPresent(nombre -> {
+                if (nombre.trim().isEmpty()) return;
+
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Archivos MP3", "*.mp3"));
+                File file = fileChooser.showOpenDialog(dialogPane.getScene().getWindow());
+
+                if (file != null) {
+                    try {
+                        String mangaId = mangaActual.getTitulo().replace(" ", "_");
+                        File destFolder = new File(Main.MUSICA_FOLDER, mangaId);
+                        if (!destFolder.exists()) destFolder.mkdirs();
+
+                        String safeName = System.currentTimeMillis() + "_" + file.getName().replace(" ", "_");
+                        File destFile = new File(destFolder, safeName);
+                        Files.copy(file.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+                        Musica nueva = new Musica(nombre, safeName);
+                        finalDatos.canciones.add(nueva);
+                        listaCanciones.getItems().add(nueva);
+                        mainController.guardarDatosGlobales();
+
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+        });
+
+        btnDel.setOnAction(e -> {
+            Musica selected = listaCanciones.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                finalDatos.canciones.remove(selected);
+                listaCanciones.getItems().remove(selected);
+                String mangaId = mangaActual.getTitulo().replace(" ", "_");
+                File file = new File(Main.MUSICA_FOLDER + File.separator + mangaId, selected.getNombreArchivo());
+                if(file.exists()) file.delete();
+                mainController.guardarDatosGlobales();
+            }
+        });
+
+        HBox botones = new HBox(10, btnAdd, btnDel);
+        botones.setAlignment(Pos.CENTER);
+
+        Label lblLista = new Label("Tus canciones:");
+        lblLista.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        content.getChildren().addAll(lblLista, listaCanciones, botones);
+
+        dialogPane.setContent(content);
+        // Personalizar el botón de cierre
+        ButtonType closeButton = ButtonType.CLOSE;
+        dialogPane.getButtonTypes().add(closeButton);
+        Node btnCerrar = dialogPane.lookupButton(closeButton);
+        btnCerrar.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
+
+        dialog.showAndWait();
+    }
+
+    private void mostrarAlertaNegra(String titulo, String mensaje) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensaje);
+        alert.getDialogPane().setStyle("-fx-background-color: #000000;");
+        alert.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+        alert.showAndWait();
+    }
+
     private void abrirElLector(String nombreCapituloSeleccionado) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
             Node lectorNode = loader.load();
-
             LectorController controller = loader.getController();
             mainController.setCurrentController(controller);
-
-            List<String> listaArchivosCbz = todosLosCapitulos.stream()
-                    .map(s -> s + ".cbz")
-                    .toList();
-
+            List<String> listaArchivosCbz = todosLosCapitulos.stream().map(s -> s + ".cbz").toList();
             String nombreArchivoSeleccionado = nombreCapituloSeleccionado + ".cbz";
             int indice = listaArchivosCbz.indexOf(nombreArchivoSeleccionado);
-
-            // Registro de progreso
             String siguienteCapitulo = null;
             if (indice + 1 < listaArchivosCbz.size()) {
                 siguienteCapitulo = listaArchivosCbz.get(indice + 1).replace(".cbz", "");
             }
             mainController.registrarLectura(mangaActual.getTitulo(), nombreCapituloSeleccionado, siguienteCapitulo);
-
-            listaCapitulos.refresh(); // Actualiza visualmente el "LEÍDO"
-
+            listaCapitulos.refresh();
             controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController);
             mainController.getViewContainer().getChildren().setAll(lectorNode);
         } catch (IOException e) {
@@ -121,7 +235,6 @@ public class CapitulosController {
         }
     }
 
-    // CORRECCIÓN: El método que busca el FXML es volverAlInicio
     @FXML private void volverAlInicio() {
         mainController.abrirInicio();
     }
@@ -131,9 +244,7 @@ public class CapitulosController {
             listaCapitulos.getItems().setAll(todosLosCapitulos);
         } else {
             String lowerCaseFilter = texto.toLowerCase();
-            List<String> filtrados = todosLosCapitulos.stream()
-                    .filter(cap -> cap.toLowerCase().contains(lowerCaseFilter))
-                    .toList();
+            List<String> filtrados = todosLosCapitulos.stream().filter(cap -> cap.toLowerCase().contains(lowerCaseFilter)).toList();
             listaCapitulos.getItems().setAll(filtrados);
         }
     }
@@ -186,25 +297,19 @@ public class CapitulosController {
                     contenedor.setAlignment(Pos.CENTER_LEFT);
                     contenedor.setPadding(new Insets(10, 15, 10, 15));
                     contenedor.getStyleClass().add("fila-capitulo");
-
                     Label icono = new Label("▶");
                     icono.setStyle("-fx-text-fill: #e50914; -fx-font-size: 16px;");
-
                     Label nombre = new Label(item);
                     nombre.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-
                     Region spacer = new Region();
                     HBox.setHgrow(spacer, Priority.ALWAYS);
-
                     boolean leido = mainController.isCapituloLeido(mangaActual.getTitulo(), item);
-
                     Label btnLeer = new Label(leido ? "LEÍDO" : "LEER");
                     if (leido) {
                         btnLeer.setStyle("-fx-text-fill: #2ecc71; -fx-font-size: 10px; -fx-border-color: #2ecc71; -fx-border-radius: 3; -fx-padding: 2 8; -fx-font-weight: bold;");
                     } else {
                         btnLeer.setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px; -fx-border-color: #555; -fx-border-radius: 3; -fx-padding: 2 8;");
                     }
-
                     contenedor.getChildren().addAll(icono, nombre, spacer, btnLeer);
                     setGraphic(contenedor);
                     setStyle("-fx-background-color: transparent; -fx-padding: 5 0; -fx-cursor: hand;");

@@ -4,6 +4,7 @@ module com.zixion.mangaverse {
     requires javafx.web;
     requires java.net.http;
     requires org.json;
+    requires javafx.media;
 
 
     opens com.zixion.mangaverse to javafx.fxml;

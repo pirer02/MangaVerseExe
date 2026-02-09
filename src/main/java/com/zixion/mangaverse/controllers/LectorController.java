@@ -1,10 +1,13 @@
 package com.zixion.mangaverse.controllers;
 
+import com.zixion.mangaverse.Main;
 import com.zixion.mangaverse.models.Manga;
+import com.zixion.mangaverse.models.Musica;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
@@ -13,6 +16,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+
 import java.io.File;
 import java.io.InputStream;
 import java.util.Enumeration;
@@ -28,6 +34,10 @@ public class LectorController {
     @FXML private Button btnAnterior;
     @FXML private Button btnSiguiente;
 
+    // --- CONTROLES DE MÚSICA ---
+    @FXML private ComboBox<Musica> comboMusica;
+    @FXML private Button btnPlayPause;
+
     private MainController mainController;
     private List<String> listaNombresCapitulos;
     private int indiceActual;
@@ -35,11 +45,12 @@ public class LectorController {
     private String mangaId;
     private volatile boolean cargando = false;
 
-    // CONFIGURACIÓN DE VELOCIDAD
-    // Ratón: Multiplicador de la velocidad base del sistema
-    private final double VELOCIDAD_SCROLL_RATON = 4.0;
+    // VARIABLES DE MEDIA
+    private MediaPlayer mediaPlayer;
+    private boolean isPlaying = false;
 
-    // Teclado: Píxeles exactos a mover por pulsación (150px es suave, similar al ratón)
+    // CONFIGURACIÓN DE VELOCIDAD
+    private final double VELOCIDAD_SCROLL_RATON = 4.0;
     private final double PIXELES_POR_TECLA = 150.0;
 
     public void inicializarLector(List<String> capitulos, int indice, Manga manga, MainController main) {
@@ -50,21 +61,102 @@ public class LectorController {
         this.mainController = main;
 
         configurarInputUsuario();
+        cargarMusicaDisponible(); // <--- INICIALIZAR MÚSICA
         cargarCapituloActual();
     }
 
+    // --- LÓGICA DE MÚSICA ---
+
+    private void cargarMusicaDisponible() {
+        MainController.DatosUsuarioManga datos = mainController.getDatosManga(mangaActual.getTitulo());
+
+        if (datos != null && !datos.canciones.isEmpty()) {
+            comboMusica.getItems().setAll(datos.canciones);
+            comboMusica.setVisible(true);
+            btnPlayPause.setVisible(true);
+
+            // Al seleccionar, cargamos pero no reproducimos automáticamente hasta dar play (o puedes cambiarlo)
+            comboMusica.setOnAction(e -> {
+                Musica seleccionada = comboMusica.getValue();
+                if (seleccionada != null) {
+                    prepararCancion(seleccionada);
+                }
+            });
+        } else {
+            comboMusica.setVisible(false);
+            btnPlayPause.setVisible(false);
+        }
+    }
+
+    private void prepararCancion(Musica musica) {
+        detenerMusica(); // Parar la anterior
+
+        try {
+            String mangaId = mangaActual.getTitulo().replace(" ", "_");
+            File file = new File(Main.MUSICA_FOLDER + File.separator + mangaId, musica.getNombreArchivo());
+
+            if (file.exists()) {
+                Media media = new Media(file.toURI().toString());
+                mediaPlayer = new MediaPlayer(media);
+
+                // Loop infinito para ambiente
+                mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                mediaPlayer.setVolume(0.5); // 50% volumen inicial
+
+                // Si ya estábamos reproduciendo, arrancamos la nueva automáticamente
+                if (isPlaying) {
+                    mediaPlayer.play();
+                } else {
+                    // Si estaba pausado, preparamos el botón para que diga Play
+                    btnPlayPause.setText("▶");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void toggleMusic() {
+        // Si no hay player cargado pero hay selección, cargamos la primera
+        if (mediaPlayer == null && comboMusica.getValue() == null && !comboMusica.getItems().isEmpty()) {
+            comboMusica.getSelectionModel().selectFirst();
+        }
+
+        if (mediaPlayer != null) {
+            if (isPlaying) {
+                mediaPlayer.pause();
+                btnPlayPause.setText("▶");
+                isPlaying = false;
+            } else {
+                mediaPlayer.play();
+                btnPlayPause.setText("⏸");
+                isPlaying = true;
+            }
+        }
+    }
+
+    private void detenerMusica() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose(); // IMPORTANTE: Liberar memoria
+            mediaPlayer = null;
+            // No reseteamos isPlaying aquí para recordar el estado si cambia de canción
+        }
+    }
+
+    // --- FIN LÓGICA MÚSICA ---
+
     private void configurarInputUsuario() {
-        // 1. Scroll del Ratón (Por Píxeles Dinámicos)
+        // 1. Scroll del Ratón
         scrollLector.addEventFilter(ScrollEvent.SCROLL, event -> {
             if (event.getDeltaY() != 0) {
-                event.consume(); // Anulamos el scroll por defecto
-
+                event.consume();
                 double contenidoAlto = contenedorPaginas.getBoundsInLocal().getHeight();
                 double visorAlto = scrollLector.getViewportBounds().getHeight();
                 double maxScroll = contenidoAlto - visorAlto;
 
                 if (maxScroll > 0) {
-                    // DeltaY suele ser ~40. Multiplicado por 4.0 da ~160px.
                     double desplazamiento = -event.getDeltaY() * VELOCIDAD_SCROLL_RATON;
                     double cambioVvalue = desplazamiento / maxScroll;
                     scrollLector.setVvalue(scrollLector.getVvalue() + cambioVvalue);
@@ -72,16 +164,14 @@ public class LectorController {
             }
         });
 
-        // 2. Scroll con Teclas (Ahora también por Píxeles Dinámicos)
+        // 2. Scroll con Teclas
         scrollLector.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            // Calculamos cuánto representa 150px en porcentaje para este capítulo específico
             double contenidoAlto = contenedorPaginas.getBoundsInLocal().getHeight();
             double visorAlto = scrollLector.getViewportBounds().getHeight();
             double maxScroll = contenidoAlto - visorAlto;
 
-            if (maxScroll <= 0) return; // Si no hay nada que scrollear, salimos
+            if (maxScroll <= 0) return;
 
-            // Convertimos los píxeles fijos a porcentaje relativo (0.0 a 1.0)
             double cambioVvalue = PIXELES_POR_TECLA / maxScroll;
 
             if (event.getCode() == KeyCode.UP) {
@@ -91,13 +181,11 @@ public class LectorController {
                 scrollLector.setVvalue(scrollLector.getVvalue() + cambioVvalue);
                 event.consume();
             } else if (event.getCode() == KeyCode.SPACE) {
-                // Espacio baja el doble de rápido (300px)
                 scrollLector.setVvalue(scrollLector.getVvalue() + (cambioVvalue * 2));
                 event.consume();
             }
         });
 
-        // Recuperar el foco al hacer clic para que el teclado siga funcionando
         scrollLector.setOnMouseClicked(e -> scrollLector.requestFocus());
     }
 
@@ -203,6 +291,7 @@ public class LectorController {
     public void detenerCarga() { this.cargando = false; }
 
     @FXML private void cerrarLector() {
+        detenerMusica(); // <--- IMPORTANTE: Paramos la música al salir
         detenerCarga();
         mainController.irACapitulos(mangaActual);
     }
