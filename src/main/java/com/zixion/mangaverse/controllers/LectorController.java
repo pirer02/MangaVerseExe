@@ -15,6 +15,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -33,6 +34,9 @@ public class LectorController {
     @FXML private ScrollPane scrollLector;
     @FXML private Button btnAnterior;
     @FXML private Button btnSiguiente;
+
+    // NUEVO: Overlay
+    @FXML private StackPane loadingOverlay;
 
     // --- CONTROLES DE MÚSICA ---
     @FXML private ComboBox<Musica> comboMusica;
@@ -61,7 +65,7 @@ public class LectorController {
         this.mainController = main;
 
         configurarInputUsuario();
-        cargarMusicaDisponible(); // <--- INICIALIZAR MÚSICA
+        cargarMusicaDisponible();
         cargarCapituloActual();
     }
 
@@ -75,7 +79,6 @@ public class LectorController {
             comboMusica.setVisible(true);
             btnPlayPause.setVisible(true);
 
-            // Al seleccionar, cargamos pero no reproducimos automáticamente hasta dar play (o puedes cambiarlo)
             comboMusica.setOnAction(e -> {
                 Musica seleccionada = comboMusica.getValue();
                 if (seleccionada != null) {
@@ -89,7 +92,7 @@ public class LectorController {
     }
 
     private void prepararCancion(Musica musica) {
-        detenerMusica(); // Parar la anterior
+        detenerMusica();
 
         try {
             String mangaId = mangaActual.getTitulo().replace(" ", "_");
@@ -98,16 +101,12 @@ public class LectorController {
             if (file.exists()) {
                 Media media = new Media(file.toURI().toString());
                 mediaPlayer = new MediaPlayer(media);
-
-                // Loop infinito para ambiente
                 mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
-                mediaPlayer.setVolume(0.5); // 50% volumen inicial
+                mediaPlayer.setVolume(0.5);
 
-                // Si ya estábamos reproduciendo, arrancamos la nueva automáticamente
                 if (isPlaying) {
                     mediaPlayer.play();
                 } else {
-                    // Si estaba pausado, preparamos el botón para que diga Play
                     btnPlayPause.setText("▶");
                 }
             }
@@ -118,7 +117,6 @@ public class LectorController {
 
     @FXML
     private void toggleMusic() {
-        // Si no hay player cargado pero hay selección, cargamos la primera
         if (mediaPlayer == null && comboMusica.getValue() == null && !comboMusica.getItems().isEmpty()) {
             comboMusica.getSelectionModel().selectFirst();
         }
@@ -139,16 +137,12 @@ public class LectorController {
     private void detenerMusica() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
-            mediaPlayer.dispose(); // IMPORTANTE: Liberar memoria
+            mediaPlayer.dispose();
             mediaPlayer = null;
-            // No reseteamos isPlaying aquí para recordar el estado si cambia de canción
         }
     }
 
-    // --- FIN LÓGICA MÚSICA ---
-
     private void configurarInputUsuario() {
-        // 1. Scroll del Ratón
         scrollLector.addEventFilter(ScrollEvent.SCROLL, event -> {
             if (event.getDeltaY() != 0) {
                 event.consume();
@@ -164,7 +158,6 @@ public class LectorController {
             }
         });
 
-        // 2. Scroll con Teclas
         scrollLector.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             double contenidoAlto = contenedorPaginas.getBoundsInLocal().getHeight();
             double visorAlto = scrollLector.getViewportBounds().getHeight();
@@ -190,6 +183,9 @@ public class LectorController {
     }
 
     private void cargarCapituloActual() {
+        // 1. Mostrar carga
+        if (loadingOverlay != null) loadingOverlay.setVisible(true);
+
         detenerCarga();
         String nombreArchivo = listaNombresCapitulos.get(indiceActual);
 
@@ -214,6 +210,7 @@ public class LectorController {
         Task<File> downloadTask = new Task<>() {
             @Override
             protected File call() throws Exception {
+                // Simulamos descarga
                 return mainController.getMangaService().descargarArchivo(mangaId, nombreArchivo);
             }
         };
@@ -226,6 +223,11 @@ public class LectorController {
             scrollLector.requestFocus();
         });
 
+        downloadTask.setOnFailed(e -> {
+            if (loadingOverlay != null) loadingOverlay.setVisible(false);
+            e.getSource().getException().printStackTrace();
+        });
+
         new Thread(downloadTask).start();
     }
 
@@ -233,6 +235,11 @@ public class LectorController {
         cargando = true;
         new Thread(() -> {
             try (ZipFile zipFile = new ZipFile(archivoCbz)) {
+                // 2. Si el zip abre bien, ocultamos carga y empezamos a mostrar páginas
+                Platform.runLater(() -> {
+                    if (loadingOverlay != null) loadingOverlay.setVisible(false);
+                });
+
                 TreeMap<String, ZipEntry> entradasOrdenadas = new TreeMap<>();
                 Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
@@ -265,6 +272,9 @@ public class LectorController {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                Platform.runLater(() -> {
+                    if (loadingOverlay != null) loadingOverlay.setVisible(false);
+                });
             }
         }).start();
     }
@@ -291,7 +301,7 @@ public class LectorController {
     public void detenerCarga() { this.cargando = false; }
 
     @FXML private void cerrarLector() {
-        detenerMusica(); // <--- IMPORTANTE: Paramos la música al salir
+        detenerMusica();
         detenerCarga();
         mainController.irACapitulos(mangaActual);
     }

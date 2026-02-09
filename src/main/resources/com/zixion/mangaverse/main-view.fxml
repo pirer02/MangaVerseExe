@@ -10,7 +10,7 @@
         <children>
             <StackPane fx:id="viewContainer" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
                        AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="60.0"
-                       style="-fx-background-color: transparent;" />
+                       style="-fx-background-color: transparent;"/>
 
             <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="15.0"
                   AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"
@@ -37,9 +37,16 @@
         </children>
     </AnchorPane>
 
+    <StackPane fx:id="loadingOverlay" visible="false" style="-fx-background-color: rgba(0,0,0,0.7);">
+        <VBox alignment="CENTER" spacing="10">
+            <ProgressIndicator fx:id="loadingSpinner" maxWidth="60" maxHeight="60"
+                               style="-fx-progress-color: #e50914;"/>
+            <Label text="Cargando..." style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+        </VBox>
+    </StackPane>
+
     <VBox fx:id="drawerMenu" maxWidth="280" translateX="-280" spacing="20"
-          style="-fx-background-color: linear-gradient(to bottom, #600000, #000000);
-                 -fx-padding: 30 20 20 20;"
+          style="-fx-background-color: linear-gradient(to bottom, #600000, #000000); -fx-padding: 30 20 20 20;"
           StackPane.alignment="CENTER_LEFT">
         <children>
             <HBox alignment="TOP_RIGHT">
@@ -48,7 +55,6 @@
             </HBox>
 
             <VBox alignment="CENTER" spacing="15" style="-fx-padding: 0 0 30 0;">
-
                 <ImageView fitHeight="120.0" fitWidth="120.0" preserveRatio="true">
                     <image>
                         <Image url="@icons/MV.png" />

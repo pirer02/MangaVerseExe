@@ -44,6 +44,9 @@ public class CapitulosController {
     @FXML private TextField txtBusqueda;
     @FXML private Label lblTotalCapitulos;
 
+    // NUEVO: Control del Overlay
+    @FXML private StackPane loadingOverlay;
+
     private MainController mainController;
     private List<String> todosLosCapitulos = new ArrayList<>();
     private Manga mangaActual;
@@ -65,6 +68,9 @@ public class CapitulosController {
         this.mangaActual = manga;
         lblTitulo.setText(titulo);
 
+        // Activamos la carga al iniciar la vista
+        if (loadingOverlay != null) loadingOverlay.setVisible(true);
+
         todosLosCapitulos.clear();
         for (String cap : capitulos) {
             todosLosCapitulos.add(cap.replace(".cbz", ""));
@@ -80,6 +86,8 @@ public class CapitulosController {
         Image imagen = new Image(manga.getUrlPortada(), true);
         portadaImg.setImage(imagen);
         bgImage.setImage(imagen);
+
+        // Cargamos la info asíncrona
         cargarInfoExtra();
 
         listaCapitulos.setOnMouseClicked(event -> {
@@ -107,11 +115,9 @@ public class CapitulosController {
         dialog.setHeaderText("Añade música temática para leer este manga.\n(Máx. 12 canciones - Archivos MP3)");
 
         DialogPane dialogPane = dialog.getDialogPane();
-        // CAMBIO: Fondo negro puro para mejor lectura
         dialogPane.setStyle("-fx-background-color: #000000; -fx-border-color: #e50914; -fx-border-width: 1;");
         dialogPane.getStylesheets().add(Objects.requireNonNull(getClass().getResource(Utils.RESOURCES_PATH + "estilos-lista.css")).toExternalForm());
 
-        // Asegurar que todos los labels sean blancos sobre el fondo negro
         dialogPane.lookupAll(".label").forEach(node -> node.setStyle("-fx-text-fill: white; -fx-font-weight: bold;"));
 
         VBox content = new VBox(15);
@@ -120,7 +126,6 @@ public class CapitulosController {
         ListView<Musica> listaCanciones = new ListView<>();
         listaCanciones.getItems().setAll(datos.canciones);
         listaCanciones.setPrefHeight(150);
-        // Estilo oscuro para la lista interna
         listaCanciones.setStyle("-fx-control-inner-background: #1a1a1a; -fx-background-color: #1a1a1a;");
 
         Button btnAdd = new Button("Añadir MP3 (+)");
@@ -140,7 +145,6 @@ public class CapitulosController {
             nameDialog.setTitle("Nueva Canción");
             nameDialog.setHeaderText("Introduce el nombre de la canción:");
 
-            // CAMBIO: Fondo negro también para el diálogo de texto
             nameDialog.getDialogPane().setStyle("-fx-background-color: #000000; -fx-border-color: #e50914;");
             nameDialog.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
 
@@ -194,7 +198,6 @@ public class CapitulosController {
         content.getChildren().addAll(lblLista, listaCanciones, botones);
 
         dialogPane.setContent(content);
-        // Personalizar el botón de cierre
         ButtonType closeButton = ButtonType.CLOSE;
         dialogPane.getButtonTypes().add(closeButton);
         Node btnCerrar = dialogPane.lookupButton(closeButton);
@@ -257,6 +260,8 @@ public class CapitulosController {
                 return mainController.getMangaService().obtenerInfoManga(mangaId);
             }
         };
+
+        // Cuando termine (éxito), actualizamos la UI y quitamos el spinner
         task.setOnSucceeded(e -> {
             Manga info = task.getValue();
             if (info != null) {
@@ -279,7 +284,15 @@ public class CapitulosController {
                     }
                 }
             }
+            if(loadingOverlay != null) loadingOverlay.setVisible(false);
         });
+
+        // Si falla, también quitamos el spinner para no bloquear la app
+        task.setOnFailed(e -> {
+            if(loadingOverlay != null) loadingOverlay.setVisible(false);
+            e.getSource().getException().printStackTrace();
+        });
+
         new Thread(task).start();
     }
 

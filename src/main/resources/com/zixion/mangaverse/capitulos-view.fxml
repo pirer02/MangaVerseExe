@@ -68,7 +68,7 @@
                             vbarPolicy="AS_NEEDED" hbarPolicy="NEVER">
                     <content>
                         <TextFlow>
-                            <Text fx:id="txtSinopsis" fill="#dddddd" text="Aquí va la descripción..." style="-fx-font-size: 16px;" />
+                            <Text fx:id="txtSinopsis" fill="#dddddd" text="Cargando información..." style="-fx-font-size: 16px;" />
                         </TextFlow>
                     </content>
                 </ScrollPane>
@@ -108,4 +108,12 @@
                   style="-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 10 0 0 0;"
                   stylesheets="@estilos-lista.css" />
     </VBox>
+
+    <StackPane fx:id="loadingOverlay" style="-fx-background-color: #141414;">
+        <VBox alignment="CENTER" spacing="15">
+            <ProgressIndicator maxWidth="50" maxHeight="50" style="-fx-progress-color: #e50914;" />
+            <Label text="Obteniendo información del manga..." style="-fx-text-fill: white; -fx-font-size: 14;" />
+        </VBox>
+    </StackPane>
+
 </StackPane>

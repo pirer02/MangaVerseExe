@@ -4,43 +4,57 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.LectorController"
-      alignment="TOP_CENTER" style="-fx-background-color: #1a1a1a;">
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.zixion.mangaverse.controllers.LectorController"
+           style="-fx-background-color: #1a1a1a;">
 
-    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 10; -fx-background-color: #000000;">
-        <children>
-            <Button text="← Volver" onAction="#cerrarLector"
-                    style="-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;"/>
+    <VBox alignment="TOP_CENTER" style="-fx-background-color: #1a1a1a;">
 
-            <Region HBox.hgrow="ALWAYS" />
+        <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 10; -fx-background-color: #000000;">
+            <children>
+                <Button text="← Volver" onAction="#cerrarLector"
+                        style="-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;"/>
 
-            <HBox spacing="5" alignment="CENTER" style="-fx-padding: 0 15 0 0;">
-                <ComboBox fx:id="comboMusica" promptText="♫ Ambiente" prefWidth="150"
-                          style="-fx-background-color: #333; -fx-text-fill: white; -fx-font-size: 11; -fx-base: #333;"/>
-                <Button fx:id="btnPlayPause" text="▶" onAction="#toggleMusic"
-                        style="-fx-background-color: #333; -fx-text-fill: white; -fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand;"/>
-            </HBox>
+                <Region HBox.hgrow="ALWAYS" />
 
-            <HBox spacing="10" alignment="CENTER">
-                <Button fx:id="btnAnterior" text="ANTERIOR" onAction="#capituloAnterior"
-                        style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+                <HBox spacing="5" alignment="CENTER" style="-fx-padding: 0 15 0 0;">
+                    <ComboBox fx:id="comboMusica" promptText="♫ Ambiente" prefWidth="150"
+                              style="-fx-background-color: #333; -fx-text-fill: white; -fx-font-size: 11; -fx-base: #333;"/>
+                    <Button fx:id="btnPlayPause" text="▶" onAction="#toggleMusic"
+                            style="-fx-background-color: #333; -fx-text-fill: white; -fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                </HBox>
 
-                <Label fx:id="lblCapitulo" text="Cargando..."
-                       style="-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold; -fx-min-width: 200; -fx-alignment: CENTER;"/>
+                <HBox spacing="10" alignment="CENTER">
+                    <Button fx:id="btnAnterior" text="ANTERIOR" onAction="#capituloAnterior"
+                            style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
 
-                <Button fx:id="btnSiguiente" text="SIGUIENTE" onAction="#capituloSiguiente"
-                        style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
-            </HBox>
+                    <Label fx:id="lblCapitulo" text="Cargando..."
+                           style="-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold; -fx-min-width: 200; -fx-alignment: CENTER;"/>
 
-            <Region HBox.hgrow="ALWAYS" />
-        </children>
-    </HBox>
+                    <Button fx:id="btnSiguiente" text="SIGUIENTE" onAction="#capituloSiguiente"
+                            style="-fx-background-color: #e50914; -fx-text-fill: white; -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+                </HBox>
 
-    <ScrollPane fx:id="scrollLector" fitToWidth="true" VBox.vgrow="ALWAYS"
-                style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a; -fx-border-color: transparent;">
-        <content>
-            <VBox fx:id="contenedorPaginas" alignment="TOP_CENTER" spacing="8" style="-fx-padding: 0 0 20 0;">
-            </VBox>
-        </content>
-    </ScrollPane>
-</VBox>
+                <Region HBox.hgrow="ALWAYS" />
+            </children>
+        </HBox>
+
+        <ScrollPane fx:id="scrollLector" fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background: #1a1a1a; -fx-background-color: #1a1a1a; -fx-border-color: transparent;">
+            <content>
+                <VBox fx:id="contenedorPaginas" alignment="TOP_CENTER" spacing="8" style="-fx-padding: 0 0 20 0;">
+                </VBox>
+            </content>
+        </ScrollPane>
+    </VBox>
+
+    <StackPane fx:id="loadingOverlay" style="-fx-background-color: #1a1a1a;">
+        <VBox alignment="CENTER" spacing="15">
+            <ProgressIndicator maxWidth="60" maxHeight="60" style="-fx-progress-color: #e50914;" />
+            <Label text="Descargando y procesando páginas..."
+                   style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;" />
+            <Label text="(Esto puede tardar unos segundos)"
+                   style="-fx-text-fill: #888; -fx-font-size: 12px;" />
+        </VBox>
+    </StackPane>
+
+</StackPane>
