@@ -474,8 +474,8 @@ public class MainController {
         Task<List<String>> fetchTask = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
-                // CAMBIO: Por defecto, desde el menú, vamos al modo Normal (false)
-                return mangaService.obtenerCapitulos(m.getTitulo(), m, false);
+                // CAMBIO: Parámetro false para forzar actualización (no forzar por defecto)
+                return mangaService.obtenerCapitulos(m.getTitulo(), m, false, false);
             }
         };
         fetchTask.setOnSucceeded(evt -> {
@@ -499,8 +499,7 @@ public class MainController {
         Task<List<String>> task = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
-                // CAMBIO: Asumimos modo normal para continuación rápida
-                return mangaService.obtenerCapitulos(m.getTitulo(), m, false);
+                return mangaService.obtenerCapitulos(m.getTitulo(), m, false, false);
             }
         };
         task.setOnSucceeded(e -> {
@@ -514,7 +513,6 @@ public class MainController {
                     Node lectorNode = loader.load();
                     LectorController controller = loader.getController();
                     setCurrentController(controller);
-                    // CAMBIO: Iniciamos el lector en modo normal (false)
                     controller.inicializarLector(listaNormalizada, index, m, this, false);
                     viewContainer.getChildren().setAll(lectorNode);
                 } else { irACapitulos(m); }
@@ -624,7 +622,6 @@ public class MainController {
             File carpetaCapitulos = new File(Main.CAPITULOS_FOLDER);
             File carpetaListas = new File(Main.LISTADO_FOLDER);
             File carpetaMusica = new File(Main.MUSICA_FOLDER);
-            // CAMBIO: Borramos también la carpeta de color
             File carpetaColor = new File(Main.CAPITULOS_COLOR_FOLDER);
 
             borrarDirectorioRecursivo(carpetaCapitulos);

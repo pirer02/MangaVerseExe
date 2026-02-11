@@ -30,6 +30,10 @@ public class MangaService {
         }
     }
 
+    public void limpiarCacheMemoria() {
+        this.cacheMangasMemoria.clear();
+    }
+
     private boolean isServerAlive(String url) {
         try {
             HttpClient client = HttpClient.newBuilder()
@@ -79,7 +83,8 @@ public class MangaService {
                 for (int i = 0; i < jsonArray.length(); i++) {
                     String nombreCarpeta = jsonArray.getString(i);
                     String nombreVisual = nombreCarpeta.replace("_", " ").replace("-", " ");
-                    String urlPortada = getBaseUrl() + "mangas/" + nombreCarpeta + "/portada";
+                    // Añadimos timestamp para evitar caché de imágenes viejas si se cambian en el server
+                    String urlPortada = getBaseUrl() + "mangas/" + nombreCarpeta + "/portada?v=" + System.currentTimeMillis();
 
                     Manga manga = new Manga(nombreVisual, null, null, null, null, null, null);
                     manga.setUrlPortada(urlPortada);
@@ -93,10 +98,6 @@ public class MangaService {
         return lista;
     }
 
-    /**
-     * CAMBIO: Nuevo método para verificar si existe versión a color.
-     * Intenta listar los archivos en la subcarpeta /color/.
-     */
     public boolean verificarExistenciaColor(String mangaNombre) {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl() + "mangas/" + mangaId + "/color/capitulos";
@@ -106,26 +107,25 @@ public class MangaService {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlFinal)).GET().build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            // Si el servidor devuelve 200 y una lista no vacía, existe la carpeta color
             if (response.statusCode() == 200) {
                 JSONArray array = new JSONArray(response.body());
                 return array.length() > 0;
             }
         } catch (Exception e) {
-            // Si da error (404, etc), asumimos que no hay color
             return false;
         }
         return false;
     }
 
-    /**
-     * CAMBIO: Ahora acepta boolean isColor
-     */
-    public List<String> obtenerCapitulos(String mangaNombre, Manga manga, boolean isColor) {
+    // Método actualizado con parámetro 'forzarActualizacion'
+    public List<String> obtenerCapitulos(String mangaNombre, Manga manga, boolean isColor, boolean forzarActualizacion) {
         String mangaId = mangaNombre.replace(" ", "_");
-        // Usamos un sufijo en el archivo de caché para diferenciar normal de color
         String sufijoCache = isColor ? "_color.json" : ".json";
         File mangaCacheFile = new File(CACHE_DIR, mangaId + sufijoCache);
+
+        if (forzarActualizacion && mangaCacheFile.exists()) {
+            mangaCacheFile.delete();
+        }
 
         if (debeUsarCache(mangaCacheFile, manga.getEstado())) {
             System.out.println("Usando caché " + (isColor ? "(Color)" : "(Normal)") + " para: " + mangaNombre);
@@ -138,7 +138,6 @@ public class MangaService {
 
         try {
             HttpClient client = HttpClient.newHttpClient();
-            // Construimos la URL: si es color, añadimos /color/ a la ruta
             String rutaEndpoint = isColor ? "/mangas/" + mangaId + "/color/capitulos"
                     : "/mangas/" + mangaId + "/capitulos";
 
@@ -168,19 +167,16 @@ public class MangaService {
         if (estado != null && estado.toUpperCase().contains("FINALIZADO")) {
             return true;
         }
-        long ttlMillis = 24 * 60 * 60 * 1000;
+        // CAMBIO: Caché de 1 hora
+        long ttlMillis = 1 * 60 * 60 * 1000;
         long diferencia = System.currentTimeMillis() - archivo.lastModified();
         return diferencia < ttlMillis;
     }
 
-    /**
-     * CAMBIO: Ahora acepta boolean isColor para saber dónde descargar y qué URL usar
-     */
     public File descargarArchivo(String mangaNombre, String nombreCapitulo, boolean isColor) throws Exception {
         String mangaId = mangaNombre.replace(" ", "_");
         String urlFinal = getBaseUrl();
 
-        // Decidimos la carpeta de destino (Normal o Color)
         File carpetaDestino = isColor ? new File(Main.CAPITULOS_COLOR_FOLDER) : new File(Main.CAPITULOS_FOLDER);
         File destination = new File(carpetaDestino, nombreCapitulo);
 
@@ -188,8 +184,6 @@ public class MangaService {
 
         String nombreCapEncoded = nombreCapitulo.replace(" ", "%20");
 
-        // Construimos la URL de descarga.
-        // Asumiendo estructura: /download/MangaID/Capitulo  O  /download/MangaID/color/Capitulo
         String urlDescarga;
         if (isColor) {
             urlDescarga = urlFinal + "download/" + mangaId + "/color/" + nombreCapEncoded;

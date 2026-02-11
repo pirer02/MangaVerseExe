@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,15 +47,21 @@ public class CapitulosController {
     @FXML private Label lblTotalCapitulos;
     @FXML private StackPane loadingOverlay;
 
-    // CAMBIO: Nuevo botón para alternar modo color
+    // Botones de la barra de herramientas
     @FXML private Button btnModoColor;
+    @FXML private Button btnOrden; // El nuevo botón de orden
 
     private MainController mainController;
-    private List<String> todosLosCapitulos = new ArrayList<>();
-    private Manga mangaActual;
 
-    // CAMBIO: Estado para saber si estamos viendo color o normal
+    // Lista VISUAL (se invierte, se filtra, cambia según lo que ve el usuario)
+    private List<String> todosLosCapitulos = new ArrayList<>();
+
+    // Lista MAESTRA (SIEMPRE en orden cronológico 1, 2, 3... para la lógica interna)
+    private List<String> listaOriginalAscendente = new ArrayList<>();
+
+    private Manga mangaActual;
     private boolean modoColor = false;
+    private boolean ordenDescendente = true; // Por defecto empezamos descendente (lo más nuevo arriba)
 
     @FXML
     public void initialize() {
@@ -67,7 +74,6 @@ public class CapitulosController {
         clip.heightProperty().bind(contenedorPrincipal.heightProperty());
         contenedorPrincipal.setClip(clip);
 
-        // Inicialmente ocultamos el botón hasta verificar si hay color
         if(btnModoColor != null) {
             btnModoColor.setVisible(false);
             btnModoColor.setManaged(false);
@@ -78,7 +84,7 @@ public class CapitulosController {
         this.mainController = main;
         this.mangaActual = manga;
         lblTitulo.setText(titulo);
-        this.modoColor = false; // Resetear al entrar
+        this.modoColor = false;
 
         if (loadingOverlay != null) loadingOverlay.setVisible(true);
 
@@ -93,8 +99,6 @@ public class CapitulosController {
         bgImage.setImage(imagen);
 
         cargarInfoExtra();
-
-        // CAMBIO: Verificar existencia de versión a color en hilo separado
         verificarOpcionColor();
 
         listaCapitulos.setOnMouseClicked(event -> {
@@ -110,14 +114,102 @@ public class CapitulosController {
 
     private void actualizarListaInterna(List<String> capitulos) {
         todosLosCapitulos.clear();
+        listaOriginalAscendente.clear(); // Limpiamos la maestra
+
         for (String cap : capitulos) {
-            todosLosCapitulos.add(cap.replace(".cbz", ""));
+            String nombreLimpio = cap.replace(".cbz", "");
+            todosLosCapitulos.add(nombreLimpio);
+            listaOriginalAscendente.add(nombreLimpio); // Guardamos copia exacta cronológica
         }
+
+        // --- CORRECCIÓN ---
+        // Antes poníamos ordenDescendente = true y revertíamos.
+        // Ahora lo dejamos en false (Ascendente) y NO revertimos la lista.
+
+        ordenDescendente = false; // Empezamos en orden normal (1, 2, 3...)
+
+        if (btnOrden != null) {
+            btnOrden.setText("⬆"); // Icono indicando que estamos en Ascendente
+        }
+
+        // NO hacemos Collections.reverse(todosLosCapitulos) aquí.
+        // Queremos que se muestre tal cual llegó (1, 2, 3...)
+
         listaCapitulos.getItems().setAll(todosLosCapitulos);
         lblTotalCapitulos.setText(String.valueOf(todosLosCapitulos.size()));
     }
 
-    // CAMBIO: Nuevo método para chequear disponibilidad de color
+    @FXML
+    private void alternarOrden() {
+        ordenDescendente = !ordenDescendente;
+
+        if (btnOrden != null) {
+            btnOrden.setText(ordenDescendente ? "⬇" : "⬆");
+        }
+
+        // Invertimos la lista visual
+        Collections.reverse(todosLosCapitulos);
+
+        // Refrescamos la vista manteniendo el filtro de búsqueda si existe
+        filtrarCapitulos(txtBusqueda.getText());
+    }
+
+    // Método para forzar recarga (opcional, si quieres añadir un botón de "Refresh")
+    public void forzarRecarga() {
+        if (loadingOverlay != null) loadingOverlay.setVisible(true);
+        Task<List<String>> reloadTask = new Task<>() {
+            @Override
+            protected List<String> call() throws Exception {
+                // true = forzar descarga ignorando caché
+                return mainController.getMangaService().obtenerCapitulos(mangaActual.getTitulo(), mangaActual, modoColor, true);
+            }
+        };
+        reloadTask.setOnSucceeded(e -> {
+            actualizarListaInterna(reloadTask.getValue());
+            if (loadingOverlay != null) loadingOverlay.setVisible(false);
+        });
+        reloadTask.setOnFailed(e -> {
+            if (loadingOverlay != null) loadingOverlay.setVisible(false);
+            e.getSource().getException().printStackTrace();
+        });
+        new Thread(reloadTask).start();
+    }
+
+    private void abrirElLector(String nombreCapituloSeleccionado) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
+            Node lectorNode = loader.load();
+            LectorController controller = loader.getController();
+            mainController.setCurrentController(controller);
+
+            // --- CORRECCIÓN DE LÓGICA ---
+            // Usamos listaOriginalAscendente para la lógica.
+            // Esta lista SIEMPRE es [Cap 1, Cap 2, ... Cap Final].
+            // Así el index + 1 siempre es el futuro.
+
+            List<String> listaArchivosCbz = listaOriginalAscendente.stream()
+                    .map(s -> s + ".cbz")
+                    .toList();
+
+            String nombreArchivoSeleccionado = nombreCapituloSeleccionado + ".cbz";
+            int indice = listaArchivosCbz.indexOf(nombreArchivoSeleccionado);
+
+            String siguienteCapitulo = null;
+            if (indice + 1 < listaArchivosCbz.size()) {
+                siguienteCapitulo = listaArchivosCbz.get(indice + 1).replace(".cbz", "");
+            }
+
+            mainController.registrarLectura(mangaActual.getTitulo(), nombreCapituloSeleccionado, siguienteCapitulo);
+            listaCapitulos.refresh();
+
+            controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController, modoColor);
+
+            mainController.getViewContainer().getChildren().setAll(lectorNode);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void verificarOpcionColor() {
         Task<Boolean> checkTask = new Task<>() {
             @Override
@@ -139,13 +231,11 @@ public class CapitulosController {
         new Thread(checkTask).start();
     }
 
-    // CAMBIO: Acción del botón
     @FXML
     private void toggleColorMode() {
         loadingOverlay.setVisible(true);
-        modoColor = !modoColor; // Alternar estado
+        modoColor = !modoColor;
 
-        // Actualizar apariencia del botón
         if (modoColor) {
             btnModoColor.setText("Ver Original 📄");
             btnModoColor.setStyle("-fx-background-color: #555; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;");
@@ -154,12 +244,11 @@ public class CapitulosController {
             btnModoColor.setStyle("-fx-background-color: linear-gradient(to right, #8e44ad, #c0392b); -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 10;");
         }
 
-        // Recargar capítulos con el nuevo modo
         Task<List<String>> reloadTask = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
-                // Pasamos el flag modoColor al servicio
-                return mainController.getMangaService().obtenerCapitulos(mangaActual.getTitulo(), mangaActual, modoColor);
+                // Recargamos (sin forzar update) con el nuevo modo
+                return mainController.getMangaService().obtenerCapitulos(mangaActual.getTitulo(), mangaActual, modoColor, false);
             }
         };
 
@@ -178,8 +267,6 @@ public class CapitulosController {
 
     @FXML
     private void gestionarMusica() {
-        // ... (El código de música se mantiene IDÉNTICO, lo omito para ahorrar espacio, cópialo de tu versión anterior) ...
-        // Simplemente asegúrate de mantener el método tal cual estaba.
         MainController.DatosUsuarioManga datos = mainController.getDatosManga(mangaActual.getTitulo());
         if (datos == null) {
             mainController.registrarLectura(mangaActual.getTitulo(), "INIT", null);
@@ -283,7 +370,6 @@ public class CapitulosController {
         dialog.showAndWait();
     }
 
-    // Método auxiliar (mismo que tenías)
     private void mostrarAlertaNegra(String titulo, String mensaje) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(titulo);
@@ -292,31 +378,6 @@ public class CapitulosController {
         alert.getDialogPane().setStyle("-fx-background-color: #000000;");
         alert.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
         alert.showAndWait();
-    }
-
-    private void abrirElLector(String nombreCapituloSeleccionado) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(Utils.RESOURCES_PATH + "lector-view.fxml"));
-            Node lectorNode = loader.load();
-            LectorController controller = loader.getController();
-            mainController.setCurrentController(controller);
-            List<String> listaArchivosCbz = todosLosCapitulos.stream().map(s -> s + ".cbz").toList();
-            String nombreArchivoSeleccionado = nombreCapituloSeleccionado + ".cbz";
-            int indice = listaArchivosCbz.indexOf(nombreArchivoSeleccionado);
-            String siguienteCapitulo = null;
-            if (indice + 1 < listaArchivosCbz.size()) {
-                siguienteCapitulo = listaArchivosCbz.get(indice + 1).replace(".cbz", "");
-            }
-            mainController.registrarLectura(mangaActual.getTitulo(), nombreCapituloSeleccionado, siguienteCapitulo);
-            listaCapitulos.refresh();
-
-            // CAMBIO: Pasamos el flag modoColor al inicializador
-            controller.inicializarLector(listaArchivosCbz, indice, mangaActual, mainController, modoColor);
-
-            mainController.getViewContainer().getChildren().setAll(lectorNode);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @FXML private void volverAlInicio() {
@@ -376,7 +437,6 @@ public class CapitulosController {
     }
 
     private void configurarDisenoLista() {
-        // ... (El código de la celda de lista se mantiene igual, lo omito por espacio. Pégalo aquí) ...
         listaCapitulos.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {

@@ -85,10 +85,19 @@
         </HBox>
 
         <HBox alignment="CENTER_LEFT" spacing="15">
+
             <HBox alignment="CENTER" spacing="8" style="-fx-background-color: rgba(255,255,255,0.05); -fx-padding: 6 15; -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 20;">
                 <Label text="Capítulos totales:" style="-fx-text-fill: #888; -fx-font-size: 13px;" />
                 <Label fx:id="lblTotalCapitulos" text="0" style="-fx-text-fill: #e50914; -fx-font-weight: bold; -fx-font-size: 15px;" />
             </HBox>
+
+            <Button fx:id="btnOrden" text="⬇" onAction="#alternarOrden"
+                    style="-fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-font-size: 14; -fx-cursor: hand; -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 20; -fx-min-width: 35; -fx-padding: 5 12;">
+                <tooltip>
+                    <Tooltip text="Cambiar orden (Ascendente/Descendente)" />
+                </tooltip>
+            </Button>
+
             <Region HBox.hgrow="ALWAYS" />
 
             <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="450.0" prefWidth="450.0"
