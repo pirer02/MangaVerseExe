@@ -19,7 +19,8 @@ import org.json.JSONObject;
 
 public class MangaService {
     private String IP_LOCAL = "ipoculto/";
-    private String IP_PUBLICA = "http://95.61.154.61:5000/";
+    // Sustituimos la IP con números por tu dominio de DuckDNS (manteniendo el puerto)
+    private String IP_PUBLICA = "ipoculta2";
 
     private final File CACHE_DIR = new File(Main.LISTADO_FOLDER, "cache_capitulos");
     private List<Manga> cacheMangasMemoria = new ArrayList<>();
