@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<ScrollPane fitToWidth="true" style="-fx-background: #141414; -fx-background-color: #141414; -fx-border-color: transparent;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zixion.mangaverse.controllers.PerfilController">
+
+    <VBox alignment="TOP_CENTER" spacing="20" style="-fx-padding: 40 20 40 20; -fx-background-color: #141414;">
+
+        <Label text="👤" style="-fx-font-size: 80; -fx-text-fill: lightgray;"/>
+
+        <VBox alignment="CENTER" spacing="5">
+            <Label fx:id="lblEmail" text="No has iniciado sesión" style="-fx-text-fill: white; -fx-font-size: 22; -fx-font-weight: bold;"/>
+            <Label fx:id="lblEstadoCuenta" text="Cuenta no vinculada" style="-fx-text-fill: gray; -fx-font-size: 14;"/>
+        </VBox>
+
+        <Button fx:id="btnLogin" text="Vincular con Google" onAction="#iniciarSesion"
+                style="-fx-background-color: white; -fx-text-fill: black; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 14;"/>
+
+        <Separator style="-fx-background-color: #333;" maxWidth="600">
+            <VBox.margin><Insets top="15" bottom="15"/></VBox.margin>
+        </Separator>
+
+        <VBox spacing="10" maxWidth="600" style="-fx-alignment: CENTER_LEFT;">
+
+            <Label text="PREFERENCIAS" style="-fx-text-fill: gray; -fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 0 0 5 5;"/>
+
+            <HBox alignment="CENTER_LEFT" style="-fx-background-color: #1E1E1E; -fx-background-radius: 12; -fx-padding: 15;">
+                <Label text="🔔" style="-fx-font-size: 18; -fx-text-fill: white;"/>
+                <Label text="Notificaciones de capítulos" style="-fx-text-fill: white; -fx-font-size: 16; -fx-padding: 0 0 0 15;"/>
+                <Region HBox.hgrow="ALWAYS" />
+                <CheckBox fx:id="chkNotificaciones" onAction="#toggleNotificaciones" style="-fx-text-fill: white; -fx-cursor: hand;"/>
+            </HBox>
+
+            <Region prefHeight="20"/>
+
+            <VBox fx:id="boxGestionCuenta" spacing="10" visible="false" managed="false">
+                <Label text="GESTIÓN DE CUENTA" style="-fx-text-fill: gray; -fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 0 0 5 5;"/>
+
+                <Button text="🔄 Cambiar de cuenta" onAction="#cambiarCuenta" maxWidth="Infinity" alignment="CENTER_LEFT"
+                        style="-fx-background-color: #1E1E1E; -fx-text-fill: white; -fx-font-size: 16; -fx-padding: 15; -fx-background-radius: 12; -fx-cursor: hand;"/>
+
+                <Button text="🚪 Cerrar Sesión" onAction="#cerrarSesion" maxWidth="Infinity" alignment="CENTER_LEFT"
+                        style="-fx-background-color: #1E1E1E; -fx-text-fill: white; -fx-font-size: 16; -fx-padding: 15; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                <Button text="❌ Eliminar Cuenta Permanentemente" onAction="#eliminarCuenta" maxWidth="Infinity" alignment="CENTER_LEFT"
+                        style="-fx-background-color: #1E1E1E; -fx-text-fill: #FF6B6B; -fx-font-size: 16; -fx-padding: 15; -fx-background-radius: 12; -fx-cursor: hand;"/>
+            </VBox>
+
+            <Region prefHeight="20"/>
+
+            <Label text="SISTEMA Y DATOS" style="-fx-text-fill: gray; -fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 0 0 5 5;"/>
+
+            <Button text="☁ Forzar Actualización Manual" onAction="#forzarActualizacion" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    style="-fx-background-color: #1E1E1E; -fx-text-fill: #4DA8DA; -fx-font-size: 16; -fx-padding: 15; -fx-background-radius: 12; -fx-cursor: hand;"/>
+
+            <Button text="🗑 Borrar Todos los Datos Locales" onAction="#borrarDatosLocales" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    style="-fx-background-color: #1E1E1E; -fx-text-fill: #FF6B6B; -fx-font-size: 16; -fx-padding: 15; -fx-background-radius: 12; -fx-cursor: hand;"/>
+
+        </VBox>
+    </VBox>
+</ScrollPane>

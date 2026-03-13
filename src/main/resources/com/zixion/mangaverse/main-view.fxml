@@ -20,6 +20,9 @@
 
                     <Pane HBox.hgrow="ALWAYS" />
 
+                    <Button fx:id="btnTopLogin" text="Vincular con Google" onAction="#iniciarSesionDesdeTopBar"
+                            style="-fx-background-color: white; -fx-text-fill: black; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 8 15; -fx-cursor: hand;"/>
+
                     <HBox fx:id="searchBoxContainer" alignment="CENTER_RIGHT">
                         <TextField fx:id="searchBar" promptText="Buscar manga..."
                                    style="-fx-background-color: rgba(255, 255, 255, 0.15);
@@ -43,9 +46,14 @@
 
     <StackPane fx:id="loadingOverlay" visible="false" style="-fx-background-color: rgba(0,0,0,0.7);" mouseTransparent="false">
         <VBox alignment="CENTER" spacing="10">
-            <ProgressIndicator fx:id="loadingSpinner" maxWidth="60" maxHeight="60"
-                               style="-fx-progress-color: #e50914;"/>
-            <Label text="Cargando..." style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+            <ProgressIndicator fx:id="loadingSpinner" maxWidth="60" maxHeight="60" style="-fx-progress-color: #e50914;"/>
+
+            <Label fx:id="lblTextoCarga" text="Cargando..." style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+
+            <Label fx:id="lblTemporizador" visible="false" managed="false" style="-fx-text-fill: #bdc3c7; -fx-font-size: 14;"/>
+
+            <Button fx:id="btnCancelarCarga" text="Cancelar" visible="false" managed="false" onAction="#cancelarCarga"
+                    style="-fx-background-color: transparent; -fx-text-fill: #e50914; -fx-border-color: #e50914; -fx-border-radius: 5; -fx-cursor: hand; -fx-padding: 5 15;"/>
         </VBox>
     </StackPane>
 
@@ -64,12 +72,13 @@
                         <Image url="@icons/MV.png" />
                     </image>
                 </ImageView>
+                <Label text="¡Bienvenido!" style="-fx-text-fill: white; -fx-font-size: 24; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 1);"/>
+                <Label text="Tu portal de manga" style="-fx-text-fill: #bdc3c7; -fx-font-size: 12;"/>
 
-                <Label text="¡Bienvenido!"
-                       style="-fx-text-fill: white; -fx-font-size: 24; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 1);"/>
-
-                <Label text="Tu portal de manga"
-                       style="-fx-text-fill: #bdc3c7; -fx-font-size: 12;"/>
+                <VBox fx:id="boxUsuarioMenu" alignment="CENTER" spacing="5" visible="false" managed="false">
+                    <Label text="Sesión iniciada como:" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <Label fx:id="lblUsuarioEmail" text="correo@gmail.com" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13;"/>
+                </VBox>
             </VBox>
 
             <Separator opacity="0.3" />
@@ -83,17 +92,13 @@
             <Button text="📚 Biblioteca" onAction="#abrirBiblioteca"
                     style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
 
+            <Button text="👤 Mi Perfil" onAction="#abrirPerfil"
+                    style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 18; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" maxWidth="Infinity"/>
+
             <Region VBox.vgrow="ALWAYS" />
 
             <Separator opacity="0.3" />
 
-            <Button text="🗑 Borrar Datos" onAction="#borrarDatos"
-                    style="-fx-background-color: transparent; -fx-text-fill: #ff6b6b; -fx-font-size: 14; -fx-cursor: hand; -fx-alignment: CENTER_LEFT; -fx-font-weight: bold;"
-                    maxWidth="Infinity">
-                <tooltip>
-                    <Tooltip text="Elimina descargas y biblioteca" />
-                </tooltip>
-            </Button>
         </children>
     </VBox>
 
