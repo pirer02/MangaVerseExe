@@ -817,16 +817,12 @@ public class MainController {
         hb.setPadding(new Insets(10, 25, 10, 25));
 
         for (Manga m : mangas) {
-            // 1. Guardamos la tarjeta gráfica que te devuelve tu método
+            // 1. Guardamos la tarjeta gráfica
             javafx.scene.Node tarjeta = crearTarjetaManga(m, trackerImagenes);
 
-            // 2. ¡AQUÍ ESTÁ LA MAGIA!
-            // Si esta fila es la de "Continuar Leyendo", sobrescribimos el clic de la tarjeta
-            if (titulo.equals("Continuar Leyendo")) {
-                tarjeta.setOnMouseClicked(e -> abrirLectorDeContinuar(m));
-            }
+            // ¡ELIMINADO EL BLOQUE QUE ROMPÍA LOS CLICS AQUÍ!
 
-            // 3. Añadimos la tarjeta a la fila horizontal
+            // 2. Añadimos la tarjeta a la fila horizontal
             hb.getChildren().add(tarjeta);
         }
 

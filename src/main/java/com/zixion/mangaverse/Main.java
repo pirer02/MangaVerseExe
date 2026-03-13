@@ -1,5 +1,9 @@
 package com.zixion.mangaverse;
 
+// --- 1. AÑADIMOS ESTAS DOS IMPORTACIONES NUEVAS ---
+import com.zixion.mangaverse.controllers.MainController;
+import com.zixion.mangaverse.services.BackgroundService;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -32,6 +36,9 @@ public class Main extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/zixion/mangaverse/main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
 
+        // --- 2. CAPTURAMOS EL CONTROLADOR PRINCIPAL ---
+        MainController mainController = fxmlLoader.getController();
+
         stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/com/zixion/mangaverse/icons/MV.png"))));
         stage.setTitle("MangaVerse");
         stage.setScene(scene);
@@ -43,7 +50,11 @@ public class Main extends Application {
             limpiarCarpetaTemporal(new File(CAPITULOS_FOLDER));
             limpiarCarpetaTemporal(new File(CAPITULOS_COLOR_FOLDER));
         }));
+
         stage.show();
+
+        // --- 3. INICIAMOS EL SERVICIO DE NOTIFICACIONES EN SEGUNDO PLANO ---
+        new BackgroundService(mainController, stage);
     }
 
     public static void main(String[] args) {

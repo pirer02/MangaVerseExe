@@ -12,5 +12,7 @@ public class UserData {
     public boolean notificacionesActivas = true;
     public Map<String, List<Musica>> canciones = new HashMap<>();
 
+    public Map<String, Integer> capitulosConocidos = new HashMap<>();
+
     public UserData() {}
 }
