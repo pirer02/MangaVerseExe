@@ -624,7 +624,6 @@ public class MainController {
         new Thread(task).start();
     }
 
-
     private void construirVistaInicio() {
         List<Image> imagenesPendientes = new ArrayList<>();
         VBox mainLayout = new VBox(35);
