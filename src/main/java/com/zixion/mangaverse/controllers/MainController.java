@@ -234,21 +234,31 @@ public class MainController {
     // MOTORES DE DATOS Y SINCRONIZACIÓN
     // =========================================================================================
 
-    public void guardarDatosGlobales() {
-        guardarBiblioteca(); // Guarda localmente primero
+    // 1. NUEVA FUNCIÓN: Guarda solo en el disco duro del PC (Ideal para caché y limpiezas)
+    public void guardarLocal() {
+        try {
+            String json = jsonNubeLocal();
+            Files.writeString(ARCHIVO_BIBLIOTECA.toPath(), json);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
+    // 2. FUNCIÓN GLOBAL: Guarda local y sube a Firebase en segundo plano
+    public void guardarDatosGlobales() {
+        guardarLocal(); // Guarda local SIEMPRE primero
         if (authService.isLogueado()) {
-            // Ejecutamos en un hilo separado para no congelar la interfaz (UI)
             new Thread(() -> {
                 try {
                     String jsonLocal = Files.readString(ARCHIVO_BIBLIOTECA.toPath());
                     authService.guardarDatosEnNube(jsonLocal);
                 } catch (Exception e) {
-                    System.err.println("Error en sincronización automática: " + e.getMessage());
+                    System.err.println("Error en sincronización: " + e.getMessage());
                 }
             }).start();
         }
     }
+
 
     // Reemplaza estos métodos en MainController.java
 
@@ -331,16 +341,7 @@ public class MainController {
 
     // --- GUARDAR DATOS (De Objeto Java a JSON para Firebase) ---
     public void guardarBiblioteca() {
-        try {
-            String json = jsonNubeLocal(); // Genera JSON con nuevo timestamp
-            Files.writeString(ARCHIVO_BIBLIOTECA.toPath(), json);
-
-            if (authService.isLogueado()) {
-                authService.guardarDatosEnNube(json);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        guardarDatosGlobales();
     }
 
 
@@ -365,7 +366,7 @@ public class MainController {
             borrarDirectorioRecursivo(carpetaColor);
 
             userData = new UserData();
-            guardarBiblioteca();
+            guardarLocal();
 
             carpetaCapitulos.mkdirs();
             carpetaListas.mkdirs();
@@ -380,7 +381,13 @@ public class MainController {
         }
     }
 
-
+    public void realizarBorradoSilencioso() {
+        try {
+            if (ARCHIVO_BIBLIOTECA.exists()) Files.delete(ARCHIVO_BIBLIOTECA.toPath());
+            userData = new UserData();
+            guardarLocal();
+        } catch (Exception e) {}
+    }
 
     private void borrarDirectorioRecursivo(File archivo) {
         if (archivo.isDirectory()) {
@@ -597,17 +604,23 @@ public class MainController {
         Task<List<Manga>> task = new Task<>() {
             @Override
             protected List<Manga> call() throws Exception {
-                List<Manga> mangasServidor = mangaService.obtenerMangasDesdeServidor();
-                for (Manga m : mangasServidor) {
-                    Manga info = mangaService.obtenerInfoManga(m.getTitulo().replace(" ", "_"));
-                    m.setGeneros(info.getGeneros()); m.setSinopsis(info.getSinopsis());
-                    m.setEstado(info.getEstado()); m.setTipo(info.getTipo());
-                }
-                return mangasServidor;
+                // Como el servidor ya manda TODA la info de golpe en el nuevo formato JSON,
+                // ya no necesitamos hacer un bucle 'for' para pedir la info manga por manga.
+                // Simplemente pedimos la lista y la devolvemos.
+                return mangaService.obtenerMangasDesdeServidor();
             }
         };
-        task.setOnSucceeded(e -> { this.listaMaestra = task.getValue(); abrirInicio(); });
-        task.setOnFailed(e -> { setCargando(false); e.getSource().getException().printStackTrace(); });
+
+        task.setOnSucceeded(e -> {
+            this.listaMaestra = task.getValue();
+            abrirInicio();
+        });
+
+        task.setOnFailed(e -> {
+            setCargando(false);
+            e.getSource().getException().printStackTrace();
+        });
+
         new Thread(task).start();
     }
 
@@ -866,9 +879,20 @@ public class MainController {
                     Platform.runLater(() -> {
                         String capBuscado = siguienteCap.endsWith(".cbz") ? siguienteCap : siguienteCap + ".cbz";
                         int idx = caps.indexOf(capBuscado);
-                        if (idx != -1 && idx + 1 < caps.size()) {
-                            String nextCap = caps.get(idx + 1).replace(".cbz", "");
-                            lblNext.setText(extraerNumeroCapitulo(nextCap));
+                        if (idx != -1) {
+                            if (idx + 1 < caps.size()) {
+                                // Hay un siguiente capítulo. Avanzamos el historial silenciosamente.
+                                String nextCap = caps.get(idx + 1).replace(".cbz", "");
+                                lblNext.setText(extraerNumeroCapitulo(nextCap));
+                                userData.historial.put(m.getTitulo(), nextCap);
+                                userData.progresoPagina.remove(m.getTitulo() + "___" + nextCap);
+                                guardarLocal();
+                            } else {
+                                // NO hay más capítulos. ¡Manga Completado!
+                                userData.historial.remove(m.getTitulo());
+                                guardarLocal();
+                                imageContainer.getChildren().remove(lblNext); // Quitamos la etiqueta
+                            }
                         }
                     });
                 }).start();

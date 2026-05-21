@@ -294,30 +294,29 @@ public class LectorController {
                 }
 
                 // 5. FINALIZACIÓN Y RETOMA DE LECTURA (Lógica Sincronizada)
+                // 5. FINALIZACIÓN Y RETOMA DE LECTURA (Lógica Sincronizada)
                 Platform.runLater(() -> {
                     cargando = false;
                     if (loadingOverlay != null) loadingOverlay.setVisible(false);
 
                     String nombreCap = listaNombresCapitulos.get(indiceActual).replace(".cbz", "");
-                    // Recuperamos el progreso que MainController bajó de Firebase
                     int paginaGuardada = mainController.obtenerProgreso(mangaActual.getTitulo(), nombreCap, isColorMode);
 
-                    if (paginaGuardada > 0 && totalPaginas > 1) {
-                        // Pausa para asegurar que JavaFX haya renderizado y calculado el alto del ScrollPane
+                    // AÑADIDO: Verificamos si el capítulo ya se considera completado
+                    boolean yaLoLeyo = mainController.isCapituloLeido(mangaActual.getTitulo(), nombreCap);
+
+                    // Si NO lo ha leído y tiene progreso, saltamos a la página.
+                    // Si ya lo leyó, ignoramos el progreso y empezamos desde la página 0.
+                    if (paginaGuardada > 0 && totalPaginas > 1 && !yaLoLeyo) {
                         javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(1200));
                         pt.setOnFinished(ev -> {
                             double max = scrollLector.getVmax();
                             double targetScroll = ((double) paginaGuardada / (totalPaginas - 1)) * max;
 
-                            // Actualizamos la posición del scroll
                             scrollLector.setVvalue(targetScroll);
-
-                            // Sincronizamos la variable interna y la interfaz visual
                             this.paginaActual = paginaGuardada;
                             if (sliderProgreso != null) sliderProgreso.setValue(paginaGuardada);
                             if (lblProgresoPagina != null) lblProgresoPagina.setText((paginaGuardada + 1) + " / " + totalPaginas);
-
-                            System.out.println("[Sincro] Retomado con éxito en página: " + (paginaGuardada + 1));
                         });
                         pt.play();
                     }

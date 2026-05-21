@@ -80,15 +80,34 @@ public class MangaService {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
+                // Ahora el servidor devuelve un Array de OBJETOS JSON, no de Strings
                 JSONArray jsonArray = new JSONArray(response.body());
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    String nombreCarpeta = jsonArray.getString(i);
-                    String nombreVisual = nombreCarpeta.replace("_", " ").replace("-", " ");
-                    // Añadimos timestamp para evitar caché de imágenes viejas si se cambian en el server
-                    String urlPortada = getBaseUrl() + "mangas/" + nombreCarpeta + "/portada?v=" + System.currentTimeMillis();
 
-                    Manga manga = new Manga(nombreVisual, null, null, null, null, null, null);
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject mangaJson = jsonArray.getJSONObject(i);
+
+                    // Extraemos los datos tal cual lo hace tu data class MangaApiDto en Kotlin
+                    String idCarpeta = mangaJson.getString("id_carpeta");
+                    String titulo = mangaJson.getString("titulo");
+                    String descripcion = mangaJson.optString("descripcion", "Sin descripción");
+                    String estado = mangaJson.optString("estado", "Desconocido");
+                    String tipo = mangaJson.optString("tipo", "Manga");
+
+                    List<String> generos = new ArrayList<>();
+                    JSONArray generosArray = mangaJson.optJSONArray("generos");
+                    if (generosArray != null) {
+                        for (int j = 0; j < generosArray.length(); j++) {
+                            generos.add(generosArray.getString(j));
+                        }
+                    }
+
+                    // Construimos la URL de la portada usando el id_carpeta real
+                    String urlPortada = getBaseUrl() + "mangas/" + idCarpeta + "/portada?v=" + System.currentTimeMillis();
+
+                    // Construimos el manga YA COMPLETO con toda la info (sinopsis, géneros, etc.)
+                    Manga manga = new Manga(titulo, null, null, descripcion, generos, estado, tipo);
                     manga.setUrlPortada(urlPortada);
+
                     lista.add(manga);
                 }
                 this.cacheMangasMemoria = lista;

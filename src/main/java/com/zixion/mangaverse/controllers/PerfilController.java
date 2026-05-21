@@ -133,11 +133,16 @@ public class PerfilController {
         );
     }
 
+    // Reemplazar en PerfilController.java
     @FXML
     private void cambiarCuenta() {
         authService.cerrarSesion();
+        if (mainController != null) {
+            mainController.realizarBorradoSilencioso(); // Limpia memoria antigua
+        }
         iniciarSesion();
     }
+
 
     @FXML
     private void cerrarSesion() {
@@ -158,13 +163,14 @@ public class PerfilController {
         }
     }
 
+    // Reemplazar en PerfilController.java
     @FXML
     private void forzarActualizacion() {
         if (mainController != null) {
             mainController.setCargando(true);
             mainController.getUserData().lastUpdateTimestamp = 0L;
             mainController.getUserData().timestampsCapitulos.clear();
-            mainController.guardarDatosGlobales();
+            mainController.guardarLocal(); // <--- CRUCIAL: Cambiado por guardarLocal()
             Platform.runLater(() -> mainController.abrirInicio());
         }
     }
