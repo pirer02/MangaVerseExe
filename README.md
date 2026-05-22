@@ -1,5 +1,5 @@
 # 📖 MangaVerse
-
+![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white)
 
 MangaVerse es un ecosistema de lectura y gestión de manga diseñado para ofrecer una experiencia unificada a través de múltiples dispositivos (Android, iOS y Escritorio). 
